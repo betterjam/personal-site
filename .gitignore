@@ -38,5 +38,3 @@ Thumbs.db
 .vscode/
 .idea/
 
-# infra/ ships in a later commit, after its own audit
-infra/
