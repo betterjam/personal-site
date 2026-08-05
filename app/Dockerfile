@@ -2,11 +2,11 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY app/package.json app/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-COPY tsconfig.json tsconfig.test.json nest-cli.json ./
-COPY src ./src
+COPY app/tsconfig.json app/tsconfig.test.json app/nest-cli.json ./
+COPY app/src ./src
 RUN npm run build && npm prune --omit=dev
 
 # --- runtime stage ------------------------------------------------------
@@ -21,11 +21,15 @@ WORKDIR /app
 ARG GIT_SHA
 ARG BUILD_TIME
 ENV GIT_SHA=${GIT_SHA} BUILD_TIME=${BUILD_TIME}
+# content.json / pages / themes ship in the image; paths.ts looks beside APP_ROOT
+ENV CONTENT_DIR=/app/content PAGES_DIR=/app/content/pages THEMES_DIR=/app/themes
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY public ./public
-COPY package.json ./
+COPY app/public ./public
+COPY content ./content
+COPY themes ./themes
+COPY app/package.json ./
 
 # Event log lives here unless BLOG_EVENTS_PATH points elsewhere (mount a
 # volume in real deployments; the Postgres store replaces this on ECS/RDS).

@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/dist-test
+**/cdk.out
+app/var
+frontend/src/assets/_review
+mockups
+infra
+.git

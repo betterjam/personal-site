@@ -231,6 +231,14 @@ export class DiegoSiteStack extends FencedStack {
       db.dbInstanceEndpointPort,
       '/',
       DB_NAME,
+      // RDS Postgres 16 rejects unencrypted connections (`no pg_hba.conf
+      // entry ... no encryption`), so TLS is not optional. `no-verify`
+      // encrypts the connection without validating the server certificate
+      // against a CA bundle — the traffic never leaves the VPC and the
+      // client cannot be pointed elsewhere, since the host comes from the
+      // instance itself. Verifying properly means shipping the RDS CA into
+      // the image and switching this to `verify-full`; noted in the README.
+      '?sslmode=no-verify',
     ].join('');
 
     const container = taskDefinition.addContainer('blog', {
