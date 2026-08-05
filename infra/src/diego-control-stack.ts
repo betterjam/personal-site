@@ -365,9 +365,23 @@ export class DiegoControlStack extends FencedStack {
       timeout: Duration.seconds(30),
       role: controlRole,
       logGroup: controlLogGroup,
-      // G3: even if the API throttle were removed, the blast radius of a
-      // scripted visitor is five concurrent invocations.
-      reservedConcurrentExecutions: API_RESERVED_CONCURRENCY,
+      /*
+       * G3: even if the API throttle were removed, the blast radius of a
+       * scripted visitor is capped at this many concurrent invocations.
+       *
+       * Opt-in, because a reservation is only safe when the account has
+       * headroom. AWS refuses any reservation that would drop unreserved
+       * concurrency below 10, and an account still on the default limit of
+       * 10 therefore cannot reserve at all. Worse, in a shared account a
+       * reservation carved out for this public playground comes straight out
+       * of the pool the co-resident production functions draw on — the
+       * guardrail would become the outage. Raise the account's concurrency
+       * quota first, then set `-c reservedConcurrency=5`.
+       *
+       * Until then the rate ceiling is the API Gateway throttle (G3's stage
+       * and per-route limits), which is enforced before Lambda is invoked.
+       */
+      reservedConcurrentExecutions: resolveReservedConcurrency(this),
       environment: {
         MANIFEST: JSON.stringify(manifest),
         DIAGRAM: JSON.stringify(diagram),
@@ -412,14 +426,15 @@ export class DiegoControlStack extends FencedStack {
     this.api = api;
 
     const integration = new apigwv2Integrations.HttpLambdaIntegration('ControlIntegration', this.controlFunction);
+    const allRoutes: apigwv2.HttpRoute[] = [];
     for (const route of ROUTES) {
-      api.addRoutes({ path: route.path, methods: [route.method], integration });
+      allRoutes.push(...api.addRoutes({ path: route.path, methods: [route.method], integration }));
     }
     // Catch-all so the panel's unimplemented calls (logs, pipelines, drift)
     // reach the handler and get an honest 501 payload instead of an API
     // Gateway error page. It adds no capability: the handler owns the surface.
-    api.addRoutes({ path: '/{proxy+}', methods: [apigwv2.HttpMethod.ANY], integration });
-    api.addRoutes({ path: '/', methods: [apigwv2.HttpMethod.GET], integration });
+    allRoutes.push(...api.addRoutes({ path: '/{proxy+}', methods: [apigwv2.HttpMethod.ANY], integration }));
+    allRoutes.push(...api.addRoutes({ path: '/', methods: [apigwv2.HttpMethod.GET], integration }));
 
     const stage = new apigwv2.HttpStage(controlScope, 'Stage', {
       httpApi: api,
@@ -445,6 +460,14 @@ export class DiegoControlStack extends FencedStack {
     // Per-route throttling on the mutating routes: the L2 only exposes stage
     // defaults, so the route map goes on through the L1 as raw CloudFormation
     // (route keys such as `POST /power` are not valid CDK property names).
+    // RouteSettings name routes by key (`POST /power`), and API Gateway
+    // validates that each key exists when the stage is created. Without this
+    // dependency CloudFormation is free to build the stage first and the
+    // create fails with "Unable to find Route by key POST /rules/delete".
+    for (const route of allRoutes) {
+      stage.node.addDependency(route);
+    }
+
     const cfnStage = stage.node.defaultChild as apigwv2.CfnStage;
     for (const routeKey of MUTATING_ROUTE_KEYS) {
       cfnStage.addPropertyOverride(`RouteSettings.${routeKey}.ThrottlingBurstLimit`, 5);
@@ -712,9 +735,23 @@ interface DenyContext {
  */
 export function buildDenyStatements(ctx: DenyContext): iam.PolicyStatement[] {
   const protectedPrefixes = ctx.protectedStackPrefixes ?? [];
-  const protectedArnPatterns = protectedPrefixes.map(
-    (prefix) => `arn:${ctx.partition}:*:*:*:*${prefix}*`,
-  );
+  /*
+   * IAM requires the SERVICE ("vendor") segment of an ARN to be fully
+   * qualified — `arn:aws:*:*:*:*name*` is rejected outright with "Resource
+   * vendor must be fully qualified and cannot contain regexes". So the
+   * name-based deny is expanded per service instead of using one wildcard,
+   * covering everything this control plane could conceivably reach. S3 gets
+   * its own shape because its ARNs carry no region or account.
+   */
+  const PROTECTED_SERVICES = [
+    'cloudformation', 'ecs', 'rds', 'secretsmanager', 'ssm', 'logs',
+    'lambda', 'dynamodb', 'events', 'scheduler', 'ecr', 'elasticloadbalancing',
+    'cloudfront', 'ec2', 'kms',
+  ];
+  const protectedArnPatterns = protectedPrefixes.flatMap((prefix) => [
+    ...PROTECTED_SERVICES.map((svc) => `arn:${ctx.partition}:${svc}:*:*:*${prefix}*`),
+    `arn:${ctx.partition}:s3:::*${prefix}*`,
+  ]);
 
   return [
     ...(protectedArnPatterns.length > 0
@@ -952,4 +989,22 @@ function numberContext(scope: Construct, key: string, fallback: number): number 
 function inferZoneName(domainName: string): string {
   const labels = domainName.split('.');
   return labels.length > 2 ? labels.slice(1).join('.') : domainName;
+}
+
+/**
+ * Reserved concurrency for the control Lambda (G3), opt-in via
+ * `-c reservedConcurrency=<n>` or `CDK_RESERVED_CONCURRENCY`.
+ *
+ * Returns undefined when unset, which leaves the function on the shared
+ * account pool. See the call site for why that is the safe default in an
+ * account whose concurrency quota is still the default 10.
+ */
+export function resolveReservedConcurrency(scope: Construct): number | undefined {
+  const raw = scope.node.tryGetContext('reservedConcurrency') ?? process.env.CDK_RESERVED_CONCURRENCY;
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`reservedConcurrency must be a positive integer, got: ${String(raw)}`);
+  }
+  return value;
 }

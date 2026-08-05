@@ -258,11 +258,30 @@ describe('G3 — rate limiting', () => {
     }));
   });
 
-  test('the control Lambda has reserved concurrency', () => {
-    base.template.hasResourceProperties('AWS::Lambda::Function', Match.objectLike({
-      FunctionName: 'diego-control-api',
-      ReservedConcurrentExecutions: 5,
-    }));
+  test('reserved concurrency is opt-in and absent by default', () => {
+    /*
+     * A reservation is only safe when the account has concurrency headroom:
+     * AWS rejects any reservation leaving unreserved concurrency below 10, and
+     * in a shared account the reservation is taken from the same pool the
+     * co-resident production functions use. So the default template carries no
+     * reservation and the API Gateway throttle is the rate ceiling.
+     */
+    const fns = base.template.findResources('AWS::Lambda::Function', {
+      Properties: { FunctionName: 'diego-control-api' },
+    });
+    const [fn] = Object.values(fns);
+    expect(fn).toBeDefined();
+    expect(fn.Properties.ReservedConcurrentExecutions).toBeUndefined();
+  });
+
+  test('reserved concurrency is applied when the context asks for it', () => {
+    build({ context: { reservedConcurrency: 5 } }).template.hasResourceProperties(
+      'AWS::Lambda::Function',
+      Match.objectLike({
+        FunctionName: 'diego-control-api',
+        ReservedConcurrentExecutions: 5,
+      }),
+    );
   });
 });
 

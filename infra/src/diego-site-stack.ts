@@ -252,11 +252,16 @@ export class DiegoSiteStack extends FencedStack {
       cluster,
       taskDefinition,
       serviceName: `${SITE_RESOURCE_PREFIX}api`,
-      // Note: a CloudFormation update resets this to 1 — i.e. deploying the
-      // stack turns the lights back on even if a visitor switched them off
-      // through the control plane. Documented in the README; the control
-      // plane's watchdog turns them off again within 15 minutes.
-      desiredCount: 1,
+      // Context-driven so the FIRST deploy can come up with 0 tasks: the ECR
+      // repository this service pulls from is created by this very stack, so
+      // it is empty until the bootstrap image push. `-c desiredCount=0` lets
+      // CloudFormation reach steady state immediately; turn the lights on
+      // afterwards from the control plane (or redeploy without the flag).
+      // Note: a later CloudFormation update resets this to the context value —
+      // i.e. deploying turns the lights back on even if a visitor switched
+      // them off. The control plane's watchdog turns them off again within
+      // 15 minutes.
+      desiredCount: Number(this.node.tryGetContext('desiredCount') ?? 1),
       // Public subnets + public IP: no NAT gateway needed to reach
       // ECR / Secrets Manager / CloudWatch Logs.
       assignPublicIp: true,
@@ -494,7 +499,7 @@ export class DiegoSiteStack extends FencedStack {
     const sourceAction = new pipelineActions.CodeStarConnectionsSourceAction({
       actionName: 'GitHub',
       owner: this.node.tryGetContext('githubOwner') ?? 'betterjam',
-      repo: this.node.tryGetContext('githubRepo') ?? 'diego-site',
+      repo: this.node.tryGetContext('githubRepo') ?? 'personal-site',
       branch: this.node.tryGetContext('githubBranch') ?? 'main',
       connectionArn,
       output: sourceOutput,
