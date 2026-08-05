@@ -1,0 +1,264 @@
+/* ============================================================
+   SHOWCASE — Seafoam Swiss case studies ('projects').
+   Browser-framed snapshots beside copy, alternating rows,
+   hairline discipline. All colors via scoped tokens (--p-*)
+   set at runtime from the theme JSONs — no hardcoded hex.
+   ============================================================ */
+.vw-sc {
+  background: var(--p-bone); color: var(--p-graphite);
+  /* the surface the shared browser frame is cut out of — the frame itself
+     lives in styles/shotFrame.css, worn here, in the reading room's hero
+     and around every markdown !image[] figure */
+  --sf-paper: var(--p-bone);
+}
+
+/* ---------------- section head (Seafoam Swiss idiom) ---------------- */
+.sc-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .6875rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-graphite) 66%, var(--p-bone));
+}
+.sc-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(2.1rem, 5.4vw, 4rem);
+  line-height: 1.02; letter-spacing: -.03em; max-width: 20ch;
+}
+.sc-summary { margin: 0; font-size: clamp(1.02rem, 1.4vw, 1.15rem); line-height: 1.65; max-width: 62ch; }
+
+/* ---------------- case-study rows ---------------- */
+.sc-list { margin-top: clamp(1.6rem, 4vh, 2.6rem); padding-bottom: 4.5rem; }
+.sc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 6.5fr) minmax(0, 5.5fr);
+  gap: clamp(1.8rem, 4.5vw, 4rem);
+  align-items: center;
+  padding-block: clamp(2.4rem, 7vh, 4rem);
+}
+.sc-row + .sc-row { border-top: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone)); }
+.sc-row--flip .sc-shot { order: 2; }
+
+/* ---------------- the browser frame ----------------
+   Structure, chrome bar and caption: styles/shotFrame.css. All this band
+   adds is the hover the WHOLE ROW shares — the copy card is the link, so
+   pointing at it must light the picture beside it too. */
+.sc-row:hover .sf-frame,
+.sc-row:focus-within .sf-frame {
+  border-color: color-mix(in srgb, var(--p-seafoam-deep) 55%, var(--p-bone));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .05),
+    0 22px 48px -22px rgba(0, 0, 0, .34);
+}
+
+/* ---------------- copy ---------------- */
+/* the copy COLUMN — the copy card plus the repo widget, which is a link of
+   its own and therefore a sibling of the card, never a child of it */
+.sc-side {
+  min-width: 0;
+  display: grid; align-content: center;
+  gap: clamp(1rem, 2.2vw, 1.35rem);
+}
+.sc-repo { min-width: 0; max-width: 30rem; }
+.sc-repo[hidden] { display: none; }
+
+.sc-copy { min-width: 0; display: grid; gap: .7rem; align-content: center; }
+/* a page block's copy IS the link — one anchor, one tab stop, one ring */
+a.sc-copy--link {
+  color: inherit; text-decoration: none;
+  border-radius: 6px;
+  padding: .25rem;
+  margin: -.25rem;
+  transition: background-color .22s ease;
+}
+a.sc-copy--link:hover { background: color-mix(in srgb, var(--p-seafoam) 16%, transparent); }
+a.sc-copy--link:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 3px; }
+a.sc-copy--link:hover .sc-cta-arrow { transform: translateX(.22rem); }
+
+.sc-cta {
+  margin: .2rem 0 0;
+  display: inline-flex; align-items: baseline; gap: .45rem;
+  font-family: var(--font-mono); font-size: .72rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--p-pine);
+}
+.sc-cta-arrow { transition: transform .22s ease; }
+
+/* loading: the shape of the copy, never invented copy */
+.sc-skel {
+  display: block; height: .78em; border-radius: 3px;
+  background: color-mix(in srgb, var(--p-graphite) 12%, var(--p-bone));
+}
+.sc-skel + .sc-skel { margin-top: .42em; }
+.sc-skel--title { height: 1.5rem; width: 62%; }
+.sc-skel--short { width: 58%; }
+.is-loading .sc-cta { opacity: .45; }
+@media (prefers-reduced-motion: no-preference) {
+  .sc-skel { animation: sc-skel-pulse 1.6s ease-in-out infinite; }
+  @keyframes sc-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+}
+.sc-num {
+  margin: 0; display: flex; align-items: center; gap: .6rem;
+  font-family: var(--font-mono); font-size: .72rem;
+  font-variant-numeric: tabular-nums; letter-spacing: .08em;
+  color: var(--p-seafoam-deep);
+}
+.sc-num::before { content: ''; width: 1.4rem; height: .5rem; background: var(--p-seafoam); }
+.sc-title {
+  margin: 0; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(1.45rem, 2.4vw, 2.05rem);
+  line-height: 1.06; letter-spacing: -.02em; max-width: 18ch;
+}
+.sc-deck { margin: 0; line-height: 1.65; max-width: 46ch; }
+.sc-tags {
+  margin: .15rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem;
+  font-family: var(--font-mono); font-size: .6875rem;
+  color: color-mix(in srgb, var(--p-graphite) 66%, var(--p-bone));
+}
+
+/* ============================================================
+   Illustrative mocks — abstract shapes in the section palette;
+   captions declare them sketches, never screenshots.
+   ============================================================ */
+.sc-mock { aspect-ratio: 8 / 5; display: grid; }
+.sc-bar {
+  display: block; height: .38rem; border-radius: 2px;
+  background: color-mix(in srgb, var(--p-graphite) 18%, var(--p-bone));
+}
+.sc-bar--l { width: 72%; }
+.sc-bar--s { width: 46%; }
+
+/* --- architecture diagram (SVG scales itself) --- */
+.sc-arch-wrap { aspect-ratio: auto; }
+.sc-arch { display: block; width: 100%; height: auto; }
+.sc-arch .sc-w { fill: none; stroke: var(--p-steel); stroke-width: 1.5; }
+.sc-arch .sc-w--evt { stroke: var(--p-seafoam-deep); stroke-dasharray: 4 5; }
+.sc-arch .sc-node {
+  fill: color-mix(in srgb, var(--p-seafoam) 18%, var(--p-bone));
+  stroke: color-mix(in srgb, var(--p-graphite) 40%, var(--p-bone));
+  stroke-width: 1.5;
+}
+.sc-arch .sc-node--alb {
+  fill: color-mix(in srgb, var(--p-seafoam) 45%, var(--p-bone));
+  stroke: var(--p-seafoam-deep);
+}
+.sc-arch .sc-node--data { fill: color-mix(in srgb, var(--p-graphite) 6%, var(--p-bone)); }
+.sc-arch .sc-dot-on { fill: var(--p-seafoam-deep); }
+.sc-arch .sc-chip { fill: none; stroke: var(--p-steel); stroke-dasharray: 3 4; }
+.sc-arch .sc-lbl {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em;
+  fill: var(--p-graphite); text-anchor: middle;
+}
+.sc-arch .sc-lbl--chip { font-size: 10px; fill: var(--p-steel); }
+
+/* --- control panel: service cards + toggles over rules --- */
+.sc-cp {
+  grid-template-rows: 1fr auto; gap: clamp(.7rem, 3%, 1.1rem);
+  padding: clamp(.8rem, 4%, 1.4rem);
+}
+.sc-cp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(.6rem, 2.5%, 1rem); }
+.sc-cp-card {
+  display: grid; gap: .55rem; align-content: start;
+  padding: clamp(.6rem, 5%, 1rem);
+  background: var(--p-bone);
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  border-radius: 8px;
+}
+.sc-cp-head { display: flex; align-items: center; gap: .45rem; }
+.sc-cp-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--p-seafoam-deep); }
+.sc-cp-name {
+  font-family: var(--font-mono); font-size: .62rem; letter-spacing: .1em;
+  color: color-mix(in srgb, var(--p-graphite) 78%, var(--p-bone));
+}
+.sc-cp-pill {
+  justify-self: start; margin-top: .2rem;
+  width: 2rem; height: 1.05rem; border-radius: 99px;
+  background: var(--p-seafoam);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: .12rem;
+}
+.sc-cp-pill i { display: block; width: .78rem; height: .78rem; border-radius: 50%; background: var(--p-bone); }
+.sc-cp-card.is-off .sc-cp-dot { background: color-mix(in srgb, var(--p-steel) 55%, var(--p-bone)); }
+.sc-cp-card.is-off .sc-cp-pill {
+  background: color-mix(in srgb, var(--p-steel) 30%, var(--p-bone));
+  justify-content: flex-start;
+}
+.sc-cp-rules {
+  display: grid; gap: .5rem;
+  border-top: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone));
+  padding-top: clamp(.6rem, 3%, 1rem);
+}
+.sc-cp-rule { display: grid; grid-template-columns: 3fr 2fr auto; align-items: center; gap: 1rem; }
+.sc-cp-rule .sc-bar { width: 100%; }
+.sc-cp-switch {
+  width: 1.7rem; height: .95rem; border-radius: 99px;
+  background: color-mix(in srgb, var(--p-steel) 30%, var(--p-bone));
+  display: flex; align-items: center; justify-content: flex-start; padding: .11rem;
+}
+.sc-cp-switch::after {
+  content: ''; width: .7rem; height: .7rem; border-radius: 50%; background: var(--p-bone);
+}
+.sc-cp-switch.is-on { background: var(--p-seafoam); justify-content: flex-end; }
+
+/* --- storefront: product grid, cart chip, checkout bar --- */
+.sc-shop {
+  grid-template-rows: auto 1fr auto; gap: clamp(.7rem, 3%, 1.1rem);
+  padding: clamp(.8rem, 4%, 1.4rem);
+}
+.sc-shop-top { display: flex; align-items: center; gap: 1rem; }
+.sc-shop-logo { width: 2.6rem; height: .7rem; background: var(--p-graphite); border-radius: 2px; }
+.sc-shop-nav { display: flex; gap: .7rem; margin-left: .5rem; }
+.sc-bar--nav { width: 1.9rem; }
+.sc-shop-cart {
+  margin-left: auto; position: relative;
+  width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--p-graphite) 55%, var(--p-bone));
+}
+.sc-shop-cart b {
+  position: absolute; top: -.4rem; right: -.5rem;
+  min-width: .95rem; height: .95rem; border-radius: 99px;
+  background: var(--p-pine); color: var(--p-bone);
+  font-family: var(--font-mono); font-weight: 500; font-size: .56rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.sc-shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(.6rem, 2.5%, 1rem); }
+.sc-shop-tile {
+  display: grid; gap: .45rem; align-content: start;
+  padding: .55rem;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone));
+  border-radius: 6px; background: var(--p-bone);
+}
+.sc-shop-ph {
+  display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 4px;
+  background: color-mix(in srgb, var(--p-seafoam) 38%, var(--p-bone));
+}
+.sc-shop-ph.is-alt { background: color-mix(in srgb, var(--p-steel) 30%, var(--p-bone)); }
+.sc-shop-co {
+  display: flex; align-items: center; gap: .6rem;
+  border-top: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone));
+  padding-top: clamp(.6rem, 3%, 1rem);
+}
+.sc-shop-step {
+  width: .55rem; height: .55rem; border-radius: 50%;
+  border: 1.5px solid var(--p-seafoam-deep); background: transparent;
+}
+.sc-shop-step.is-done { background: var(--p-seafoam-deep); }
+.sc-shop-pay { margin-left: auto; width: 5.2rem; height: 1.35rem; border-radius: 4px; background: var(--p-pine); }
+
+/* --- neutral page sketch: the fallback frame for any other slug --- */
+.sc-doc {
+  grid-template-rows: auto 1fr; gap: clamp(.8rem, 4%, 1.3rem);
+  padding: clamp(1rem, 5%, 1.8rem);
+  align-content: start;
+}
+.sc-doc-head { display: grid; gap: .6rem; }
+.sc-doc-rule { display: block; height: 3px; width: 100%; background: var(--p-graphite); }
+.sc-doc-title {
+  display: block; height: 1.5rem; width: 58%; border-radius: 3px;
+  background: color-mix(in srgb, var(--p-seafoam) 55%, var(--p-bone));
+}
+.sc-doc-lines { display: grid; gap: .55rem; align-content: start; }
+
+/* ---------------- stacked under 900px ---------------- */
+@media (max-width: 900px) {
+  .sc-row { grid-template-columns: 1fr; gap: 1.4rem; padding-block: clamp(1.8rem, 5vh, 2.6rem); }
+  .sc-row--flip .sc-shot { order: 0; } /* snapshot always leads when stacked */
+}

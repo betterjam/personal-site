@@ -1,0 +1,81 @@
+/* ============================================================
+   EDITORIAL — Three-Tone Sunburst chapter, ported from mockup 07
+   (band + burst disc + lede with drop cap + margin entries).
+   blog.ts reuses these classes via editorial.ts — the .ed-* rules
+   are the shared Sunburst treatment. All color flows through the
+   scoped --p-* tokens; no hardcoded palette hex.
+   ============================================================ */
+
+.vw-ed { background: var(--p-paper); color: var(--p-ink); font-size: 1.0625rem; line-height: 1.6; }
+
+.ed-band {
+  position: relative; overflow: hidden;
+  background: var(--p-burst-edge); color: var(--p-cream);
+  min-height: clamp(15rem, 42vh, 24rem);
+  display: flex; align-items: flex-end;
+}
+/* the burst disc — seated via the independent `translate` property so the
+   amber core sits just below the band's baseline even with no JS motion;
+   GSAP's scrubbed scale/filter compose on top without disturbing it */
+.ed-disc {
+  position: absolute; left: 72%; top: 100%;
+  translate: -50% -56%;
+  width: clamp(48rem, 130vw, 110rem); aspect-ratio: 1; border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, filter;
+  background: radial-gradient(circle closest-side at 50% 50%,
+    var(--p-amber) 0%,
+    var(--p-amber) 12%,
+    color-mix(in oklab, var(--p-amber) 55%, var(--p-tobacco)) 26%,
+    var(--p-tobacco) 44%,
+    color-mix(in oklab, var(--p-tobacco) 40%, var(--p-burst-edge)) 60%,
+    var(--p-burst-edge) 78%);
+}
+/* lacquer grooves — vinyl-sleeve rings radiating from the burst core */
+.ed-disc::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-radial-gradient(circle at 50% 50%,
+    transparent 0 .55rem,
+    color-mix(in oklab, var(--p-cream) 6%, transparent) .55rem .62rem);
+  -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, rgb(0 0 0) 0 45%, transparent 78%);
+  mask-image: radial-gradient(circle closest-side at 50% 50%, rgb(0 0 0) 0 45%, transparent 78%);
+}
+@media (max-width: 767.98px) { .ed-disc { left: 80%; top: 118%; } }
+
+.ed-band-inner { position: relative; z-index: 1; width: 100%; padding-block: 3rem clamp(1.8rem, 5vh, 3rem); }
+.ed-kicker {
+  margin: 0 0 .5rem; font-family: var(--font-display); font-style: italic;
+  font-size: clamp(1rem, 2vw, 1.3rem); letter-spacing: .01em;
+  color: var(--p-amber);
+}
+.ed-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(2.1rem, 5.4vw, 3.8rem); line-height: 1.05; letter-spacing: 0;
+  color: var(--p-cream); max-width: 22ch;
+}
+
+.ed-body { padding-block: clamp(2rem, 5vh, 3.4rem) clamp(3rem, 8vh, 5rem); }
+.ed-lede { margin: 0; font-size: clamp(1.12rem, 1.5vw, 1.3rem); line-height: 1.62; max-width: 65ch; }
+.ed-lede::first-letter {
+  float: left; font-family: var(--font-display); font-size: 3.1em; line-height: .82;
+  padding: .05em .13em 0 0; color: var(--p-tobacco);
+}
+.ed-entries { margin-top: 2.2rem; display: grid; gap: 2rem; max-width: 62rem; }
+.ed-entry {
+  border-top: 1px solid color-mix(in oklab, var(--p-ink) 16%, var(--p-paper));
+  padding-top: 1.3rem;
+  display: grid; gap: .8rem 2.5rem;
+}
+.ed-margin {
+  font-family: var(--font-mono); font-size: .7rem; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--p-tobacco);
+  display: flex; flex-wrap: wrap; gap: .4em 1em; align-content: start;
+}
+.ed-date { font-variant-numeric: tabular-nums; letter-spacing: .09em; color: color-mix(in oklab, var(--p-ink) 78%, var(--p-paper)); }
+.ed-title { margin: 0 0 .4rem; font-family: var(--font-display); font-weight: 400; font-size: clamp(1.3rem, 2vw, 1.55rem); line-height: 1.2; }
+.ed-deck { margin: 0; max-width: 58ch; color: color-mix(in oklab, var(--p-ink) 78%, var(--p-paper)); }
+@media (min-width: 768px) {
+  .ed-entry { grid-template-columns: 9.5rem minmax(0, 1fr); }
+  .ed-margin { flex-direction: column; gap: .5em; }
+}

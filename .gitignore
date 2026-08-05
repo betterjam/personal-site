@@ -1,0 +1,42 @@
+node_modules/
+dist/
+dist-test/
+var/
+mockups/local/
+*.log
+.env
+.env.*
+!.env.example
+cdk.out/
+
+# quarantined screenshots (PII / production identifiers) — never publish
+frontend/src/assets/_review/
+
+# CDK context cache. Belt-and-braces: infra/.gitignore already has this, but
+# that file is projen-generated (.projenrc.ts `gitignore: ['cdk.context.json']`)
+# and would be rewritten by `npx projen`. This file caches account ids, VPC ids,
+# subnet ids and hosted-zone ids — it must never be committed, wherever a CDK
+# app ends up living in this repo.
+cdk.context.json
+
+# GreenSock GSAP copies. Not ours to redistribute (GreenSock Standard "No
+# Charge" License, https://gsap.com/standard-license) and nothing loads them:
+# the frontend uses the npm package, the mockups inline their own. Kept on disk,
+# out of the repo. See THIRD-PARTY-NOTICES.md.
+vendor/
+
+# test + build noise
+coverage/
+test-reports/
+*.tsbuildinfo
+.eslintcache
+
+# editor / OS / WSL cruft
+.DS_Store
+Thumbs.db
+*Zone.Identifier
+.vscode/
+.idea/
+
+# infra/ ships in a later commit, after its own audit
+infra/

@@ -1,0 +1,146 @@
+/* ============================================================
+   SCROLL INDICATOR — floating capsule at the right edge.
+   Tokens only: the chip translucency rides var(--mx-stage)
+   (re-tinted on <body> per section), the active pill rides
+   var(--mx-accent) (re-tinted on :root), and --si-ink is a
+   neutral computed in JS from the active view's stage luminance
+   — no literal palette hex here.
+   z-order: above the deck views (auto) and rail (100), below
+   the fx canvas (900 — the swarm flies over everything), the
+   overlays (blog 950 / pageRoom 955 / maintain 960) and the
+   custom cursor.
+   ============================================================ */
+.mx-si {
+  position: fixed;
+  right: clamp(10px, 2vw, 22px);
+  top: 50%;
+  translate: 0 -50%; /* independent of `transform`, which GSAP owns */
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* hug the right edge; wide labels grow leftward */
+  gap: 0.55rem;
+  opacity: 0; /* revealed by GSAP once the intro completes */
+  visibility: hidden;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+/* ---------- prev/next destination hints: tiny mono chips ---------- */
+.mx-si-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 11rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mx-stage) 58%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--si-ink, currentColor) 12%, transparent);
+  color: color-mix(in srgb, var(--si-ink, currentColor) 76%, transparent);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none; /* hints, not targets — the dots take the clicks */
+}
+.mx-si-hint-lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* chevrons drawn from borders, tinted by the hint ink */
+.mx-si-chev {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+}
+.mx-si-chev-up {
+  transform: rotate(-45deg) translateY(1px);
+}
+.mx-si-chev-down {
+  transform: rotate(135deg) translateY(1px);
+}
+
+/* ---------- the capsule: translucent chip over the stage ---------- */
+.mx-si-capsule {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0.55rem 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mx-stage) 62%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--si-ink, currentColor) 14%, transparent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14); /* neutral overlay only */
+}
+/* hairline threading the dots */
+.mx-si-capsule::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(0.55rem + 3px);
+  bottom: calc(0.55rem + 3px);
+  width: 1px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--si-ink, currentColor) 26%, transparent);
+}
+
+/* ---------- one entry per view: dot -> accent pill ---------- */
+.mx-si-dot {
+  position: relative; /* paints above the hairline */
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: height 0.25s ease;
+}
+.mx-si-dot::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  /* opaque mix over the stage so the hairline never shows through */
+  background: color-mix(in srgb, var(--si-ink, currentColor) 46%, var(--mx-stage));
+  transition:
+    height 0.25s ease,
+    background-color 0.25s ease;
+}
+.mx-si-dot:hover::before {
+  background: color-mix(in srgb, var(--si-ink, currentColor) 72%, var(--mx-stage));
+}
+.mx-si-dot.is-active {
+  height: 26px;
+}
+.mx-si-dot.is-active::before {
+  height: 22px;
+  background: var(--mx-accent);
+}
+.mx-si-dot:focus-visible {
+  outline: 2px solid var(--mx-accent, currentColor);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-si-dot,
+  .mx-si-dot::before {
+    transition: none;
+  }
+}
+
+/* the top rail serves small screens */
+@media (max-width: 899px) {
+  .mx-si {
+    display: none;
+  }
+}

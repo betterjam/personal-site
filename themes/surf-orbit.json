@@ -1,0 +1,35 @@
+{
+  "id": "surf-orbit",
+  "name": "Surf Green Orbit",
+  "inspiration": "A Surf Green offset guitar on aged nitro lacquer, navigated like a Prezi spatial canvas. The whole site is one infinite stage; sections orbit a central tortoiseshell pick.",
+  "stage": "light",
+  "palette": {
+    "canvas": "#F2ECDB",
+    "ink": "#26201A",
+    "surf": "#7FC8B9",
+    "surfDeep": "#146B5D",
+    "tortoise": "#6B3F24",
+    "brass": "#C9973F"
+  },
+  "type": {
+    "display": {
+      "stack": "'Jost Variable', Futura, 'Century Gothic', 'Avenir Next', 'Trebuchet MS', sans-serif",
+      "note": "Retro-surf geometric caps, generous letter-spacing on labels"
+    },
+    "body": {
+      "stack": "'Archivo Variable', 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif",
+      "note": "Humanist, roomy line-height"
+    },
+    "utility": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Coordinates, tags, orbit labels"
+    }
+  },
+  "motion": {
+    "paradigm": "orbital-zoom",
+    "note": "Central pick hub with sections as orbiting knobs. Selecting one rotates the entire stage so the node reaches 12 o'clock, then the camera zooms ~9x into it while the section content staggers in. Back zooms out along the same path.",
+    "tempo": { "travel": 1.4, "reveal": 0.6, "stagger": 0.08 },
+    "eases": { "travel": "power3.inOut", "reveal": "power2.out" },
+    "params": { "zoomScale": 9, "orbitRadiusVmin": 34, "idleSpinSeconds": 240 }
+  }
+}

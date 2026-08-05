@@ -1,0 +1,35 @@
+{
+  "id": "seafoam-studio",
+  "name": "Seafoam Studio",
+  "inspiration": "A Sea Foam Green Stratocaster in a Swiss design studio: bone-white walls, graphite ink, one perfect green. Strict grid, enormous type, transitions that are precise rather than loud.",
+  "stage": "light",
+  "palette": {
+    "bone": "#FBFAF5",
+    "graphite": "#22282A",
+    "seafoam": "#9EC9BB",
+    "seafoamDeep": "#5E9484",
+    "steel": "#8A9694",
+    "pine": "#1E4A3F"
+  },
+  "type": {
+    "display": {
+      "stack": "'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif",
+      "note": "One family, many weights — Swiss discipline. Display at 800 weight, tight tracking, huge sizes"
+    },
+    "body": {
+      "stack": "'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif",
+      "note": "Same family at 400; hierarchy from size and weight only"
+    },
+    "utility": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Grid coordinates, index marks, tags"
+    }
+  },
+  "motion": {
+    "paradigm": "flip-grid",
+    "note": "Sections live as cards on a strict grid. Selecting one FLIPs it (GSAP Flip plugin) from its grid cell to fullscreen — position, size and radius morph continuously — while sibling cards recede with a fade-scale. Content staggers in on a vertical rhythm. Closing FLIPs it back to its cell.",
+    "tempo": { "flip": 0.7, "reveal": 0.5, "stagger": 0.06 },
+    "eases": { "flip": "power4.inOut", "reveal": "power2.out" },
+    "params": { "gridColumns": 3, "recededScale": 0.96, "recededOpacity": 0.25 }
+  }
+}

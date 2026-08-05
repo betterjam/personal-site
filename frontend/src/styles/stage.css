@@ -1,0 +1,80 @@
+/* ============================================================
+   STAGE — Candy Apple dark band (from mockup 07 / 02).
+   All colors via scoped tokens (--p-*) set at runtime by the
+   renderer. No hardcoded palette hex. The sg-chrome keyframes
+   are module-local so this file stays self-contained.
+   ============================================================ */
+.vw-sg {
+  background-color: var(--p-stage);
+  color: color-mix(in srgb, var(--p-bone) 90%, var(--p-stage));
+  background-image: radial-gradient(120% 90% at 50% -25%,
+    color-mix(in srgb, var(--p-candy-deep) 24%, transparent), transparent 62%);
+}
+.sg-inner { max-width: 70ch; margin-inline: auto; display: grid; gap: 1.3rem; padding-block: clamp(2.2rem, 7vh, 4.2rem) 3rem; }
+.sg-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .16em;
+  color: var(--p-gold-base);
+}
+.sg-headline {
+  margin: 0; font-family: var(--font-display); font-stretch: condensed; font-weight: 700;
+  text-transform: uppercase; line-height: .98; letter-spacing: .005em;
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  color: color-mix(in srgb, var(--p-candy) 76%, var(--p-bone));
+}
+/* one-time chrome sweep on entrance: JS adds .is-sweep, tweens the
+   background-position across the glyphs once, then removes the class */
+.sg-headline.is-sweep {
+  background-image: linear-gradient(100deg,
+    var(--p-chrome) 18%, var(--p-bone) 38%, var(--p-gold-base) 50%, var(--p-bone) 62%, var(--p-chrome) 82%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.sg-summary { margin: 0; font-size: 1.05rem; line-height: 1.7; max-width: 62ch; }
+.sg-items { display: grid; gap: .9rem; margin-top: .3rem; }
+.sg-item {
+  border: 1px solid color-mix(in srgb, var(--p-bone) 14%, transparent);
+  background: color-mix(in srgb, var(--p-bone) 4%, transparent);
+  border-radius: 12px; padding: 1rem 1.15rem;
+  display: grid; gap: .45rem;
+  transition: border-color .25s ease, background-color .25s ease;
+}
+.sg-item:hover {
+  border-color: color-mix(in srgb, var(--p-gold-base) 45%, var(--p-stage));
+  background: color-mix(in srgb, var(--p-bone) 7%, transparent);
+}
+/* the theme note's "shimmer on the active item": the lit card's title
+   wears the chrome sweep — but it only RUNS while the band is inside
+   the active scroll belt (.is-live, toggled by onEnter/onLeave) */
+.sg-item.is-active {
+  border-color: color-mix(in srgb, var(--p-gold-base) 55%, var(--p-stage));
+  background: color-mix(in srgb, var(--p-bone) 7%, transparent);
+}
+.sg-item.is-active .sg-item-title {
+  background-image: linear-gradient(100deg,
+    var(--p-chrome) 18%, var(--p-bone) 38%, var(--p-gold-base) 50%, var(--p-bone) 62%, var(--p-chrome) 82%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: sg-chrome 2.6s linear infinite;
+  animation-play-state: paused;
+}
+.vw-sg.is-live .sg-item.is-active .sg-item-title { animation-play-state: running; }
+@keyframes sg-chrome {
+  0%   { background-position: 125% 0; }
+  100% { background-position: -125% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-item.is-active .sg-item-title { animation: none; background-image: none; color: var(--p-bone); }
+  .sg-headline.is-sweep { background-image: none; color: color-mix(in srgb, var(--p-candy) 76%, var(--p-bone)); }
+}
+.sg-item-title { margin: 0; font-size: 1.02rem; font-weight: 600; letter-spacing: .01em; color: var(--p-bone); }
+.sg-item-deck { margin: 0; font-size: .94rem; line-height: 1.65; color: color-mix(in srgb, var(--p-bone) 72%, var(--p-stage)); }
+.sg-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .1rem; }
+.sg-tag {
+  font-family: var(--font-mono); font-size: .66rem; letter-spacing: .05em;
+  color: color-mix(in srgb, var(--p-chrome) 84%, var(--p-stage));
+  border: 1px solid color-mix(in srgb, var(--p-bone) 14%, transparent);
+  border-radius: 999px; padding: .16rem .55rem;
+}

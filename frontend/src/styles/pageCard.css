@@ -1,0 +1,108 @@
+/* ============================================================
+   PAGE CARD — one component, every finish.
+   Not a single palette hex and not a single --p-* token: the card
+   draws itself from currentColor (the band's ink) and the scoped
+   --accent / --focus / --font-* the surrounding wrapper sets. Drop
+   it in the Seafoam reading room or the Swiss showcase band and it
+   inherits that room's finish.
+   ============================================================ */
+
+/* ---------------- the grid a run of !page[] blocks makes ---------------- */
+.pg-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(.9rem, 2.2vw, 1.4rem);
+  margin-block: .4rem;
+  /* the reading column is narrow prose; cards get the full measure */
+  max-width: none;
+}
+.pg-block { min-width: 0; display: grid; }
+@media (max-width: 720px) {
+  .pg-blocks { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------------- the card itself ---------------- */
+a.pc-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in srgb, currentColor 3%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color .22s ease, box-shadow .22s ease, background-color .22s ease;
+}
+a.pc-card:hover {
+  border-color: color-mix(in srgb, var(--accent, currentColor) 60%, transparent);
+  background: color-mix(in srgb, var(--accent, currentColor) 5%, transparent);
+  box-shadow: 0 18px 38px -26px rgba(0, 0, 0, .45);
+}
+a.pc-card:focus-visible {
+  outline: 2px solid var(--focus, currentColor);
+  outline-offset: 3px;
+}
+
+/* ---------------- image area ---------------- */
+.pc-media {
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+.pc-img {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 0;
+}
+/* no picture: a quiet monogram in the band's accent, never a broken img */
+.pc-media.is-placeholder {
+  display: grid; place-items: center;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent, currentColor) 12%, transparent),
+      color-mix(in srgb, currentColor 5%, transparent));
+}
+.pc-mono {
+  font-family: var(--font-display, inherit);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: .04em;
+  color: color-mix(in srgb, var(--accent, currentColor) 78%, currentColor);
+}
+
+/* ---------------- copy ---------------- */
+.pc-body {
+  display: grid;
+  align-content: start;
+  gap: .45rem;
+  padding: clamp(.85rem, 2vw, 1.15rem);
+}
+.pc-title {
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  font-size: 1.08rem;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.pc-summary {
+  font-family: var(--font-body, inherit);
+  font-size: .875rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, currentColor 74%, transparent);
+}
+.pc-tags {
+  display: flex; flex-wrap: wrap; gap: .2rem .7rem;
+  margin-top: .1rem;
+  font-family: var(--font-mono, inherit);
+  font-size: .625rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.pc-card { transition: none; }
+}

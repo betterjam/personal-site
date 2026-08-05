@@ -1,0 +1,43 @@
+/* ============================================================
+   STRIPS — Seafoam Swiss channel list (from mockup 07).
+   All colors via scoped tokens (--p-*) set at runtime by the
+   renderer from the theme JSONs. No hardcoded palette hex.
+   ============================================================ */
+.vw-st { background: var(--p-bone); color: var(--p-graphite); }
+.st-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .6875rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-graphite) 66%, var(--p-bone));
+}
+.st-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(2.1rem, 5.4vw, 4rem);
+  line-height: 1.02; letter-spacing: -.03em; max-width: 20ch;
+}
+.st-summary { margin: 0; font-size: clamp(1.02rem, 1.4vw, 1.15rem); line-height: 1.65; max-width: 62ch; }
+.st-list { list-style: none; margin: 2rem 0 0; padding: 0 0 4rem; max-width: 68ch; }
+.st-item {
+  border-top: 1px solid color-mix(in srgb, var(--p-graphite) 22%, var(--p-bone));
+  padding-block: 1.7rem;
+  display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: .35rem 1.5rem;
+}
+.st-idx {
+  grid-row: 1 / span 3;
+  font-family: var(--font-mono); font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-seafoam-deep);
+  display: flex; flex-direction: column; gap: .5rem; align-items: flex-start;
+}
+.st-swatch { width: 1.4rem; height: .5rem; background: var(--p-seafoam); }
+.st-title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.1875rem; line-height: 1.2; letter-spacing: -.01em; }
+.st-deck { margin: 0; line-height: 1.6; max-width: 58ch; }
+.st-tags {
+  margin: 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem;
+  font-family: var(--font-mono); font-size: .6875rem;
+  color: color-mix(in srgb, var(--p-graphite) 66%, var(--p-bone));
+  padding-top: .25rem;
+}
+@media (max-width: 560px) {
+  .st-item { grid-template-columns: 1fr; }
+  .st-idx { grid-row: auto; flex-direction: row; align-items: center; }
+}

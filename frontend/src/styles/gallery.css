@@ -1,0 +1,170 @@
+/* ============================================================
+   GALLERY — the thumbnail grid, the framed figure, the lightbox.
+   The grid and the tiles are finish-agnostic exactly like the
+   page card: not one palette hex, everything from currentColor
+   and the surrounding band's --accent / --focus / --font-*.
+   The lightbox is a room of its own — a neutral scrim, no
+   palette — and inherits the originating band's tokens (the
+   accent on its focus rings, the mono face on its counter).
+   ============================================================ */
+
+/* ---------------- the grid ---------------- */
+.gl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: clamp(.7rem, 1.7vw, 1.05rem);
+  min-width: 0;
+  /* a reading column is narrow prose; pictures get the full measure */
+  max-width: none;
+}
+@media (max-width: 560px) {
+  .gl-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.gl-cell {
+  margin: 0; min-width: 0;
+  display: grid; gap: .45rem; align-content: start;
+}
+
+/* the tile is a real button: one tab stop, one focus ring, no nesting */
+.gl-tile {
+  display: block; width: 100%; padding: 0; margin: 0;
+  /* the box is declared before the picture arrives — nothing shifts */
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  color: inherit;
+  cursor: zoom-in;
+  -webkit-user-select: none; user-select: none;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.gl-thumb {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 0; /* screenshots lead with their chrome */
+  -webkit-user-drag: none;
+}
+.gl-tile:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent, currentColor) 62%, transparent);
+  box-shadow: 0 18px 34px -22px rgba(0, 0, 0, .5);
+}
+.gl-tile:focus-visible {
+  outline: 2px solid var(--focus, currentColor);
+  outline-offset: 3px;
+}
+.gl-cap {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .68rem; line-height: 1.5; letter-spacing: .01em;
+  color: color-mix(in srgb, currentColor 64%, transparent);
+}
+
+/* ---------------- markdown blocks ---------------- */
+/* a '!gallery[…]' paragraph */
+.gl-mount { margin-block: .6rem; min-width: 0; }
+/* a run of '!image[…]' paragraphs — framed figures, side by side */
+.gl-figs {
+  margin-block: .6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: clamp(.9rem, 2vw, 1.4rem);
+  max-width: none;
+}
+
+/* ---------------- the lightbox ---------------- */
+.gl-lb {
+  position: fixed; inset: 0; z-index: 970;
+  display: grid; place-items: center;
+  padding: clamp(1rem, 3.5vw, 2.6rem);
+  /* neutral, like the base sheet's shadows — a viewer is not a finish */
+  color: rgba(255, 255, 255, .93);
+}
+.gl-lb[hidden] { display: none; }
+.gl-lb-scrim {
+  position: absolute; inset: 0;
+  background: rgba(9, 10, 12, .9);
+  cursor: zoom-out;
+}
+
+.gl-lb-stage {
+  position: relative; margin: 0;
+  display: grid; gap: .85rem; justify-items: center;
+  max-width: min(100%, 96rem);
+}
+.gl-lb-img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 10rem);
+  max-height: calc(100dvh - 10rem);
+  width: auto; height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+  box-shadow: 0 40px 90px -44px rgba(0, 0, 0, .85);
+  -webkit-user-drag: none;
+  -webkit-user-select: none; user-select: none;
+}
+.gl-lb-meta {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  justify-content: center; gap: .35rem 1rem;
+  max-width: 68ch; text-align: center;
+}
+.gl-lb-cap {
+  font-family: var(--font-body, system-ui, sans-serif);
+  font-size: .9rem; line-height: 1.5;
+  color: rgba(255, 255, 255, .88);
+}
+.gl-lb-cap[hidden], .gl-lb-count[hidden] { display: none; }
+.gl-lb-count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .68rem; letter-spacing: .16em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, .58);
+}
+
+/* controls: quiet circles on the scrim, the finish's accent on focus */
+.gl-lb-nav, .gl-lb-close {
+  position: absolute;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .09);
+  border: 1px solid rgba(255, 255, 255, .16);
+  color: rgba(255, 255, 255, .92);
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.gl-lb-nav:hover, .gl-lb-close:hover {
+  background: rgba(255, 255, 255, .18);
+  border-color: rgba(255, 255, 255, .3);
+}
+.gl-lb-nav:focus-visible, .gl-lb-close:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 3px;
+}
+.gl-lb-nav[disabled] { opacity: .28; cursor: default; }
+.gl-lb-nav[hidden], .gl-lb-close[hidden] { display: none; }
+.gl-lb-nav {
+  top: 50%; transform: translateY(-50%);
+  width: 3rem; height: 3rem;
+}
+.gl-lb-nav--prev { left: clamp(.5rem, 2vw, 1.6rem); }
+.gl-lb-nav--next { right: clamp(.5rem, 2vw, 1.6rem); }
+.gl-chev { width: 1.4rem; height: 1.4rem; }
+.gl-lb-close {
+  top: clamp(.5rem, 2vw, 1.4rem); right: clamp(.5rem, 2vw, 1.4rem);
+  width: 2.6rem; height: 2.6rem;
+  font-size: 1rem; line-height: 1;
+}
+
+/* narrow: the controls drop to the bottom rail so they never sit on the
+   picture, and the stage gets the height back */
+@media (max-width: 700px) {
+  .gl-lb-nav { top: auto; bottom: clamp(.6rem, 3vw, 1.2rem); transform: none; width: 2.8rem; height: 2.8rem; }
+  .gl-lb-img { max-height: calc(100dvh - 13rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-tile, .gl-lb-nav, .gl-lb-close { transition: none; }
+  .gl-tile:hover { transform: none; }
+}

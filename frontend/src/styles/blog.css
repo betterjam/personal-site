@@ -1,0 +1,166 @@
+/* ============================================================
+   BLOG — the live Sunburst band. Shares the whole .ed-* chapter
+   treatment (imported via editorial.ts); this file adds only the
+   live parts: linked titles, quiet loading skeleton, the drafts
+   note, and the #/blog/:slug reading-room overlay. All color
+   flows through the scoped --p-* tokens; no hardcoded hex.
+   ============================================================ */
+
+/* ---------------- linked entry titles ---------------- */
+.vw-blog .ed-title a {
+  color: inherit; text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--p-tobacco) 45%, transparent);
+  transition: color .2s ease, border-bottom-color .2s ease;
+}
+.vw-blog .ed-title a:hover {
+  color: var(--p-tobacco);
+  border-bottom-color: var(--p-tobacco);
+}
+
+/* ---------------- quiet loading skeleton ---------------- */
+.bl-skel-entry {
+  border-top: 1px solid color-mix(in oklab, var(--p-ink) 16%, var(--p-paper));
+  padding-top: 1.3rem;
+  display: grid; gap: .8rem 2.5rem;
+}
+@media (min-width: 768px) {
+  .bl-skel-entry { grid-template-columns: 9.5rem minmax(0, 1fr); }
+}
+.bl-skel-main { display: grid; gap: .55rem; align-content: start; }
+.bl-skel-bar {
+  height: .78rem; border-radius: 3px;
+  background: color-mix(in oklab, var(--p-ink) 9%, var(--p-paper));
+  animation: bl-pulse 1.8s ease-in-out infinite;
+}
+.bl-skel-bar--margin { width: 62%; height: .6rem; }
+.bl-skel-bar--title { width: 46%; height: 1.05rem; }
+.bl-skel-bar--deck { width: 88%; }
+.bl-skel-bar--deck2 { width: 71%; }
+@keyframes bl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+.vw-blog.is-offstage .bl-skel-bar { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .bl-skel-bar { animation: none; }
+}
+
+/* ---------------- one-line drafts note ---------------- */
+.bl-note {
+  margin: 2.2rem 0 0;
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--p-tobacco);
+}
+.bl-note + .ed-entries { margin-top: 1.1rem; }
+
+/* ---------------- reading room overlay (#/blog/:slug) ----------------
+   A full-bleed Sunburst reading page: dark burst masthead, paper body,
+   bookish measure. Sits above the fx canvas, below the custom cursor. */
+.bl-room {
+  position: fixed; inset: 0; z-index: 950;
+  background: var(--p-paper); color: var(--p-ink);
+  font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.6;
+  /* the surface a browser frame is cut out of — a post body can hold
+     !image[] figures too (engine/shotFrame.ts) */
+  --sf-paper: var(--p-paper);
+}
+.bl-room[hidden] { display: none; }
+.bl-room-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+.bl-room-close {
+  position: absolute; top: 1rem; right: clamp(1rem, 3vw, 1.6rem); z-index: 2;
+  width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--p-burst-edge) 78%, var(--p-cream));
+  color: var(--p-cream);
+  border: 1px solid color-mix(in oklab, var(--p-cream) 35%, transparent);
+  font-size: 1.05rem; line-height: 1; cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.bl-room-close:hover { background: var(--p-amber); color: var(--p-burst-edge); }
+
+.bl-post-band { min-height: clamp(12rem, 34vh, 20rem); }
+.bl-post-kicker {
+  margin: 0 0 .55rem;
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 600;
+  letter-spacing: .24em; text-transform: uppercase;
+  color: var(--p-amber);
+}
+.bl-post-date {
+  margin: 0 0 .4rem;
+  font-family: var(--font-mono); font-size: .74rem;
+  font-variant-numeric: tabular-nums; letter-spacing: .09em;
+  color: color-mix(in oklab, var(--p-cream) 72%, transparent);
+}
+.bl-post-title { max-width: 20ch; }
+
+.bl-post-colwrap { max-width: 48rem; }
+.bl-standfirst {
+  margin: 0; font-size: clamp(1.12rem, 1.5vw, 1.3rem); line-height: 1.62;
+  max-width: 65ch;
+  color: color-mix(in oklab, var(--p-ink) 86%, var(--p-paper));
+}
+/* markdown body — the strict-subset engine emits p/h2-h4/ul/ol/pre/
+   blockquote/a/strong/em/code; grid gap carries the vertical rhythm */
+.bl-post-body { margin-top: 1.6rem; display: grid; gap: 1.1rem; }
+.bl-post-body > * { margin: 0; min-width: 0; }
+.bl-post-body p, .bl-post-body ul, .bl-post-body ol, .bl-post-body blockquote { max-width: 65ch; }
+.bl-post-body > p:first-child:not(.bl-room-status)::first-letter {
+  float: left; font-family: var(--font-display); font-size: 3.1em; line-height: .82;
+  padding: .05em .13em 0 0; color: var(--p-tobacco);
+}
+.bl-post-body h2, .bl-post-body h3, .bl-post-body h4 {
+  font-family: var(--font-display); font-weight: 600;
+  line-height: 1.15; color: var(--p-ink); max-width: 30ch;
+}
+.bl-post-body h2 { margin-top: 1.2rem; font-size: 1.5rem; }
+.bl-post-body h3 { margin-top: .9rem; font-size: 1.22rem; }
+.bl-post-body h4 {
+  margin-top: .7rem; font-size: .92rem;
+  font-family: var(--font-mono); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .12em;
+  color: var(--p-tobacco);
+}
+.bl-post-body a {
+  color: var(--p-tobacco);
+  text-decoration: underline; text-decoration-color: var(--p-amber);
+  text-underline-offset: 3px;
+  transition: color .2s ease;
+}
+.bl-post-body a:hover { color: var(--p-ink); }
+.bl-post-body code {
+  font-family: var(--font-mono); font-size: .86em;
+  background: color-mix(in oklab, var(--p-ink) 8%, var(--p-paper));
+  border-radius: 4px; padding: .1em .35em;
+}
+.bl-post-body pre {
+  background: color-mix(in oklab, var(--p-ink) 94%, var(--p-paper));
+  color: var(--p-cream);
+  border-radius: 8px; padding: 1rem 1.15rem;
+  overflow-x: auto;
+  font-family: var(--font-mono); font-size: .82rem; line-height: 1.6;
+}
+.bl-post-body pre code { background: none; padding: 0; font-size: inherit; }
+.bl-post-body ul, .bl-post-body ol { padding-left: 1.35em; display: grid; gap: .35rem; }
+.bl-post-body li::marker { color: var(--p-amber); }
+.bl-post-body blockquote {
+  border-left: 3px solid var(--p-amber);
+  padding: .15rem 0 .15rem 1.1rem;
+  display: grid; gap: .7rem;
+  font-style: italic;
+  color: color-mix(in oklab, var(--p-ink) 80%, var(--p-paper));
+}
+.bl-post-tags {
+  margin: 2rem 0 0; padding-top: 1.2rem;
+  border-top: 1px solid color-mix(in oklab, var(--p-ink) 16%, var(--p-paper));
+  display: flex; flex-wrap: wrap; gap: .4em 1em;
+  font-family: var(--font-mono); font-size: .7rem; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--p-tobacco);
+}
+.bl-room-status {
+  margin: 0; font-family: var(--font-mono); font-size: .78rem;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--p-ink) 60%, var(--p-paper));
+}

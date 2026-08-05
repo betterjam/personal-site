@@ -1,0 +1,143 @@
+/* ============================================================
+   PAGE READING ROOM — #/page/:slug in the Seafoam Studio finish:
+   bone walls, graphite ink, one perfect green, a strict Swiss
+   rule over the title. Deliberately NOT the Sunburst posts room —
+   light where that is dark, sans where that is serif. All color
+   flows through the scoped --p-* tokens applyTokens sets on
+   .pg-room; no hardcoded palette hex.
+   ============================================================ */
+
+.pg-room {
+  position: fixed; inset: 0; z-index: 955;
+  background: var(--p-bone); color: var(--p-graphite);
+  font-family: var(--font-body); font-size: 1.0313rem; line-height: 1.65;
+  /* the surface a browser frame is cut out of (engine/shotFrame.ts) */
+  --sf-paper: var(--p-bone);
+}
+.pg-room[hidden] { display: none; }
+.pg-room :focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+.pg-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+.pg-page {
+  max-width: 46rem; margin-inline: auto;
+  padding: clamp(3.4rem, 9vh, 6rem) clamp(1.2rem, 4vw, 2.5rem) 5.5rem;
+}
+
+/* ---------------- close control ---------------- */
+.pg-close {
+  position: absolute; top: 1rem; right: clamp(1rem, 3vw, 1.6rem); z-index: 2;
+  width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--p-graphite); color: var(--p-bone);
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 70%, var(--p-bone));
+  font-size: 1rem; line-height: 1; cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.pg-close:hover { background: var(--p-seafoam-deep); color: var(--p-bone); }
+
+/* ---------------- masthead: rule, kicker, huge Archivo ---------------- */
+.pg-head {
+  border-top: 4px solid var(--p-graphite);
+  padding-top: 1.1rem;
+}
+.pg-kicker {
+  margin: 0;
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 600;
+  letter-spacing: .26em; text-transform: uppercase;
+  color: var(--p-seafoam-deep);
+}
+.pg-title {
+  margin: .7rem 0 0;
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(2rem, 1.2rem + 4vw, 3.4rem);
+  line-height: 1.04; letter-spacing: -.02em;
+  color: var(--p-graphite);
+  text-wrap: balance;
+}
+
+/* ---------------- the hero shot, straight under the masthead ----------------
+   Full column width, the browser frame's own rounding and soft shadow
+   (styles/shotFrame.css) — the page opens on the thing it is about. */
+.pg-hero { margin-top: 2.1rem; }
+.pg-hero[hidden] { display: none; }
+
+/* ---------------- the repository widget under the masthead ---------------- */
+.pg-repo { margin-top: 1.9rem; max-width: 34rem; }
+.pg-repo[hidden] { display: none; }
+
+/* ---------------- markdown body ---------------- */
+.pg-body { margin-top: 2.3rem; display: grid; gap: 1.05rem; }
+.pg-body > * { margin: 0; min-width: 0; }
+.pg-body p, .pg-body ul, .pg-body ol, .pg-body blockquote { max-width: 65ch; }
+
+.pg-body h2, .pg-body h3, .pg-body h4 {
+  font-family: var(--font-display); color: var(--p-graphite);
+  line-height: 1.15; letter-spacing: -.01em; max-width: 30ch;
+}
+.pg-body h2 { margin-top: 1.3rem; font-size: 1.55rem; font-weight: 800; }
+.pg-body h3 { margin-top: 1rem; font-size: 1.22rem; font-weight: 700; }
+.pg-body h4 {
+  margin-top: .8rem; font-size: .95rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--p-pine);
+}
+
+/* prose links only — a page card and a repo widget are links too, and they
+   dress themselves (engine/pageCard.ts, engine/repoCard.ts), so they are
+   excluded here rather than fought with !important */
+.pg-body a:not(.pc-card):not(.rc-card) {
+  color: var(--p-pine);
+  text-decoration: underline; text-decoration-color: var(--p-seafoam-deep);
+  text-underline-offset: 3px;
+  transition: color .2s ease;
+}
+.pg-body a:not(.pc-card):not(.rc-card):hover { color: var(--p-seafoam-deep); }
+
+/* embedded page cards and repo widgets: the grid is a block of its own in
+   the reading column — full measure, not the 65ch prose measure */
+.pg-body .pg-blocks { margin-block: .6rem; }
+
+.pg-body code {
+  font-family: var(--font-mono); font-size: .86em;
+  background: color-mix(in srgb, var(--p-seafoam) 26%, var(--p-bone));
+  color: var(--p-pine);
+  border-radius: 4px; padding: .1em .35em;
+}
+.pg-body pre {
+  background: var(--p-graphite); color: var(--p-bone);
+  border-radius: 8px; padding: 1rem 1.15rem;
+  overflow-x: auto;
+  font-family: var(--font-mono); font-size: .82rem; line-height: 1.6;
+}
+.pg-body pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+.pg-body ul, .pg-body ol { padding-left: 1.35em; display: grid; gap: .35rem; }
+.pg-body li::marker { color: var(--p-seafoam-deep); font-weight: 700; }
+
+.pg-body blockquote {
+  border-left: 3px solid var(--p-seafoam-deep);
+  padding: .15rem 0 .15rem 1.1rem;
+  display: grid; gap: .7rem;
+  color: color-mix(in srgb, var(--p-graphite) 78%, var(--p-bone));
+}
+
+/* ---------------- the gallery that closes the page ---------------- */
+.pg-gallery {
+  margin-top: clamp(2.4rem, 6vh, 3.6rem);
+  border-top: 1px solid color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  padding-top: 1.4rem;
+  display: grid; gap: 1.1rem;
+}
+.pg-gallery[hidden] { display: none; }
+.pg-gal-kicker {
+  margin: 0;
+  font-family: var(--font-mono); font-size: .68rem; font-weight: 600;
+  letter-spacing: .26em; text-transform: uppercase;
+  color: var(--p-seafoam-deep);
+}
+
+.pg-status {
+  font-family: var(--font-mono); font-size: .78rem;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--p-steel);
+}

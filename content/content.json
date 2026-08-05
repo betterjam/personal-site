@@ -1,0 +1,239 @@
+{
+  "profile": {
+    "name": "Diego",
+    "role": "Cloud Architect & Software Engineer",
+    "tagline": "I build event-driven systems on AWS by day and chase vintage guitar tones by night.",
+    "location": "Working remotely, deploying globally",
+    "contact": "diego@eleva.school",
+    "links": [
+      { "label": "GitHub", "url": "https://github.com/betterjam" },
+      { "label": "LinkedIn", "url": "https://www.linkedin.com/in/diego-palominos/" }
+    ]
+  },
+  "sections": [
+    {
+      "id": "projects",
+      "label": "Projects",
+      "kicker": "Selected work",
+      "headline": "Things I shipped and still stand behind",
+      "summary": "A few projects that shaped how I think about software: platforms that turn themselves off at night, control panels that draw their own architecture, and storefronts that survived a replatform.",
+      "items": [
+        {
+          "page": "eleva-platform",
+          "tags": ["AWS", "ECS", "Event-driven", "CDK"]
+        },
+        {
+          "page": "infra-control-panel",
+          "tags": ["Angular", "Lambda", "CloudFormation", "Ops"]
+        },
+        {
+          "page": "commerce-replatform",
+          "tags": ["Magento", "Hyvä", "Integrations", "Zero-downtime"]
+        },
+        {
+          "page": "rolling-garage",
+          "tags": ["Landing", "Design", "Local business"]
+        },
+        {
+          "page": "this-site",
+          "tags": ["NestJS", "Event Sourcing", "PostgreSQL", "GSAP"]
+        }
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "Backend",
+      "kicker": "APIs, workers, queues",
+      "headline": "Boring on purpose, fast where it counts",
+      "summary": "I like backends that are predictable under load and honest about failure. Explicit contracts, idempotent handlers, and an outbox between the database and the message bus.",
+      "items": [
+        {
+          "title": "Contract-first APIs",
+          "deck": "Schemas before handlers. Versioned endpoints that consumers can trust, with validation at the edge and errors that tell you what to fix.",
+          "tags": ["REST", "TypeScript", "Node"]
+        },
+        {
+          "title": "Queues and workers",
+          "deck": "Work that can fail gets a queue, a retry policy, and a dead-letter destination. Every consumer is idempotent because at-least-once delivery always means twice eventually.",
+          "tags": ["SQS", "Idempotency", "Retries"]
+        },
+        {
+          "title": "The outbox pattern",
+          "deck": "State change and event publication in one transaction. It is the closest thing to a promise a distributed system can make.",
+          "tags": ["Outbox", "Transactions", "Reliability"]
+        }
+      ]
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "kicker": "Interfaces people operate",
+      "headline": "UIs that explain the system underneath",
+      "summary": "Most of my frontend work is operational: dashboards, control panels, storefronts. The goal is always the same — surface state clearly, make actions obvious, and let motion carry meaning instead of decoration.",
+      "items": [
+        {
+          "title": "Angular control surfaces",
+          "deck": "Live status boards where a pill, a color, and a timestamp tell you more than a log line. Built to be scanned, not read.",
+          "tags": ["Angular", "RxJS", "Dashboards"]
+        },
+        {
+          "title": "Hyvä storefronts",
+          "deck": "Tailwind-based Magento frontends where performance is a feature. Fewer megabytes, faster paint, happier checkout.",
+          "tags": ["Hyvä", "Tailwind", "Performance"]
+        },
+        {
+          "title": "Motion with intent",
+          "deck": "Transitions that show where things came from and where they went. If an animation does not explain something, it gets cut.",
+          "tags": ["GSAP", "Animation", "UX"]
+        }
+      ]
+    },
+    {
+      "id": "integrations",
+      "label": "Integrations",
+      "kicker": "Where systems shake hands",
+      "headline": "Third parties fail; integrations shouldn't",
+      "summary": "ERPs, payment gateways, shipping APIs — every external system is a distributed-systems problem wearing a vendor logo. I build the seams so they bend instead of break.",
+      "items": [
+        {
+          "title": "Webhooks done right",
+          "deck": "Signed, verified, deduplicated, and acknowledged fast. The processing happens later, on a queue, where a retry is cheap.",
+          "tags": ["Webhooks", "Security", "Async"]
+        },
+        {
+          "title": "Reconciliation loops",
+          "deck": "When two systems disagree about money, a nightly reconciliation job is the referee. Trust, but verify with a cron.",
+          "tags": ["Payments", "Consistency", "Auditing"]
+        },
+        {
+          "title": "Anti-corruption layers",
+          "deck": "The vendor's data model stays at the boundary. Inside, the domain speaks its own language and never learns what SOAP is.",
+          "tags": ["DDD", "Boundaries", "Adapters"]
+        }
+      ]
+    },
+    {
+      "id": "event-sourcing",
+      "label": "Event Sourcing",
+      "kicker": "The log is the truth",
+      "headline": "State is a cache; events are the record",
+      "summary": "Append-only logs, projections you can rebuild, and the quiet confidence of being able to answer 'how did we get here?' for any row in the database.",
+      "items": [
+        {
+          "title": "Append-only aggregates",
+          "deck": "Every change is an event with a name, a timestamp, and an author. Current state is just a fold over history.",
+          "tags": ["Events", "Aggregates", "CQRS"]
+        },
+        {
+          "title": "Rebuildable projections",
+          "deck": "Read models are disposable by design. When requirements change, replay the log into a new shape and drop the old one.",
+          "tags": ["Projections", "Replay", "Read models"]
+        },
+        {
+          "title": "Schema evolution",
+          "deck": "Events live forever, so they need versioning, upcasting, and a healthy respect for the ones written three years ago.",
+          "tags": ["Versioning", "Upcasting", "Longevity"]
+        }
+      ]
+    },
+    {
+      "id": "distributed-systems",
+      "label": "Distributed Systems",
+      "kicker": "Everything fails, plan for it",
+      "headline": "Consistency is a spectrum, pick your point",
+      "summary": "Sagas over two-phase commit, backpressure over wishful thinking, and observability deep enough that 3 a.m. incidents come with a map.",
+      "items": [
+        {
+          "title": "Sagas and compensation",
+          "deck": "Long-running workflows as a chain of local transactions, each with an undo. When step four fails, steps one through three know how to apologize.",
+          "tags": ["Sagas", "Workflows", "Compensation"]
+        },
+        {
+          "title": "Backpressure",
+          "deck": "Systems should slow down gracefully instead of falling over heroically. Bounded queues, load shedding, and honest 429s.",
+          "tags": ["Resilience", "Load", "Flow control"]
+        },
+        {
+          "title": "Observability",
+          "deck": "Traces that cross service boundaries, metrics with alarms that mean something, and logs you can actually search during an incident.",
+          "tags": ["Tracing", "Metrics", "Alerting"]
+        }
+      ]
+    },
+    {
+      "id": "iac",
+      "label": "Infrastructure as Code",
+      "kicker": "The environment is a program",
+      "headline": "If it isn't in the repo, it doesn't exist",
+      "summary": "AWS CDK stacks that build themselves through pipelines, render themselves as diagrams, and shut themselves down when nobody is looking. Infrastructure with a power button.",
+      "items": [
+        {
+          "title": "CDK everything",
+          "deck": "TypeScript stacks with constructs shaped after the domain, not the console. A new environment is a pull request, not a weekend.",
+          "tags": ["CDK", "TypeScript", "AWS"]
+        },
+        {
+          "title": "Cost-aware by design",
+          "deck": "Dev and staging power off outside working hours on schedule rules. The cheapest instance is the one that is off.",
+          "tags": ["FinOps", "Scheduling", "Spot"]
+        },
+        {
+          "title": "Pipelines with gates",
+          "deck": "Every stack ships through CodePipeline with manual approval where it matters and automatic rollback where it doesn't.",
+          "tags": ["CI/CD", "CodePipeline", "Rollback"]
+        }
+      ]
+    },
+    {
+      "id": "guitars",
+      "label": "Guitars",
+      "kicker": "The analog stack",
+      "headline": "Latency zero, uptime whenever I feel like it",
+      "summary": "Away from the keyboard I collect guitar tones and the colors that come with them: surf green offsets, seafoam Strats, candy apple reds, and sunbursts that fade like a good deploy on a Friday.",
+      "items": [
+        {
+          "title": "The finishes",
+          "deck": "Fender's custom colors were borrowed from 1950s car paint — Surf Green from Chevrolet, Candy Apple Red mixed over a gold base. Every finish is a story about an era.",
+          "tags": ["Surf Green", "Candy Apple", "Sunburst"]
+        },
+        {
+          "title": "The instruments",
+          "deck": "An offset with a rosewood board for jangle, a humbucker workhorse for weight, and an acoustic dreadnought in three-tone sunburst for the porch.",
+          "tags": ["Offsets", "Strats", "Acoustics"]
+        },
+        {
+          "title": "The signal chain",
+          "deck": "Tube amps on the edge of breakup, a pedalboard that grows faster than any microservice fleet, and an ongoing argument about whether true bypass matters.",
+          "tags": ["Amps", "Pedals", "Tone"]
+        }
+      ]
+    },
+    {
+      "id": "blog",
+      "label": "Blog",
+      "kicker": "Notes from the workshop",
+      "headline": "Writing things down before they bite again",
+      "summary": "Long-form notes on systems, infrastructure, and the occasional guitar detour. Deployed on ECS, stored cheap, and turned off at night like everything else I run.",
+      "items": [
+        {
+          "title": "Turning the platform off at night",
+          "deck": "How schedule rules and a control Lambda turned our AWS bill into a lights-out factory, and what broke the first time the lights came back on.",
+          "tags": ["AWS", "FinOps"],
+          "date": "2026-07-18"
+        },
+        {
+          "title": "An outbox is a promise",
+          "deck": "Exactly-once delivery does not exist, but a transactional outbox plus idempotent consumers gets close enough that nobody can tell the difference.",
+          "tags": ["Event-driven", "Patterns"],
+          "date": "2026-06-02"
+        },
+        {
+          "title": "Surf Green: Fender's happiest accident",
+          "deck": "A short history of the color that started on a 1957 Chevrolet, ended up on offset guitars, and eventually themed this very website.",
+          "tags": ["Guitars", "Design"],
+          "date": "2026-05-11"
+        }
+      ]
+    }
+  ]
+}

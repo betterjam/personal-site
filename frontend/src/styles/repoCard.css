@@ -1,0 +1,164 @@
+/* ============================================================
+   REPO CARD — the GitHub widget, one component, every finish.
+   Not a single palette hex and not a single --p-* token: the card
+   draws itself from currentColor (the band's ink) and the scoped
+   --accent / --focus / --font-* the surrounding wrapper sets, so
+   it reads correctly in the Swiss showcase band, the Seafoam
+   reading room and the Event Log preview alike.
+
+   The ONE literal color it can carry is --rc-lang, the language
+   dot, set inline from the table in engine/repoCard.ts — that is
+   data (a yellow dot IS JavaScript), not theme.
+   ============================================================ */
+
+.rc-mount { display: block; min-width: 0; }
+.rc-mount[hidden] { display: none; }
+
+/* ---------------- the card ---------------- */
+.rc-card {
+  display: grid;
+  align-content: start;
+  gap: .5rem;
+  min-width: 0;
+  padding: clamp(.8rem, 1.8vw, 1rem) clamp(.85rem, 2vw, 1.1rem);
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in srgb, currentColor 3%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 10px;
+  transition: border-color .22s ease, background-color .22s ease, box-shadow .22s ease;
+}
+a.rc-card:hover {
+  border-color: color-mix(in srgb, var(--accent, currentColor) 55%, transparent);
+  background: color-mix(in srgb, var(--accent, currentColor) 5%, transparent);
+  box-shadow: 0 16px 34px -26px rgba(0, 0, 0, .45);
+}
+a.rc-card:focus-visible {
+  outline: 2px solid var(--focus, currentColor);
+  outline-offset: 3px;
+}
+
+/* ---------------- head: mark, owner/name, chip ---------------- */
+.rc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem .55rem;
+  min-width: 0;
+}
+.rc-mark {
+  flex: none;
+  width: 1.05rem; height: 1.05rem;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+  transition: color .22s ease;
+}
+a.rc-card:hover .rc-mark { color: var(--accent, currentColor); }
+
+.rc-name {
+  min-width: 0;
+  font-family: var(--font-body, inherit);
+  font-size: .95rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.rc-owner { color: color-mix(in srgb, currentColor 62%, transparent); }
+.rc-sep {
+  padding-inline: .1em;
+  color: color-mix(in srgb, currentColor 34%, transparent);
+}
+.rc-title { font-weight: 700; letter-spacing: -.01em; }
+
+/* the private chip — quiet, and the only thing that says 'no link here' */
+.rc-chip {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .16rem .5rem;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 99px;
+  font-family: var(--font-mono, inherit);
+  font-size: .6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  white-space: nowrap;
+}
+.rc-ico--lock { width: .72rem; height: .72rem; }
+
+/* ---------------- copy ---------------- */
+.rc-desc {
+  font-family: var(--font-body, inherit);
+  font-size: .865rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, currentColor 74%, transparent);
+}
+.rc-note {
+  font-family: var(--font-mono, inherit);
+  font-size: .66rem;
+  line-height: 1.5;
+  letter-spacing: .04em;
+  color: color-mix(in srgb, currentColor 50%, transparent);
+}
+
+/* ---------------- meta row ---------------- */
+.rc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .95rem;
+  font-family: var(--font-mono, inherit);
+  font-size: .68rem;
+  letter-spacing: .04em;
+  color: color-mix(in srgb, currentColor 60%, transparent);
+}
+.rc-stat { display: inline-flex; align-items: center; gap: .32rem; }
+.rc-ico { flex: none; width: .8rem; height: .8rem; }
+/* figures line up column-wise across stacked cards */
+.rc-num, .rc-upd { font-variant-numeric: tabular-nums; }
+.rc-dot {
+  flex: none;
+  width: .58rem; height: .58rem;
+  border-radius: 50%;
+  background: var(--rc-lang, color-mix(in srgb, currentColor 45%, transparent));
+}
+
+/* ---------------- topics ---------------- */
+.rc-topics { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .05rem; }
+.rc-topic {
+  padding: .14rem .45rem;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 99px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  font-family: var(--font-mono, inherit);
+  font-size: .62rem;
+  letter-spacing: .04em;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+/* ---------------- loading: the shape, never invented copy ---------------- */
+.rc-skel {
+  display: block;
+  height: .72em;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.rc-skel--desc { width: 84%; }
+.rc-skel--meta { width: 46%; height: .62em; }
+.rc-card--skeleton .rc-name { color: color-mix(in srgb, currentColor 45%, transparent); }
+.rc-card--skeleton .rc-title { font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .rc-skel { animation: rc-skel-pulse 1.6s ease-in-out infinite; }
+  @keyframes rc-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+}
+
+/* the label a figure needs and a reader does not */
+.rc-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden; white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-card, .rc-mark { transition: none; }
+}

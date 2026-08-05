@@ -1,0 +1,41 @@
+{
+  "id": "event-log",
+  "name": "Event Log (Lake Placid Blue)",
+  "inspiration": "A developer-first site presented as an event-sourced system: the page is an append-only log, sections are projections, and opening one replays its events. The only guitar reference left is the accent — Fender Lake Placid Blue on a deep graphite stage.",
+  "stage": "dark",
+  "palette": {
+    "stage": "#0B0E14",
+    "surface": "#131A28",
+    "ice": "#E8EEF7",
+    "lakePlacid": "#3B72B8",
+    "glow": "#7FB3E8",
+    "solder": "#D9A05B"
+  },
+  "type": {
+    "display": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Large sentence-case mono headlines — terminal-native, not shouty"
+    },
+    "body": {
+      "stack": "'Archivo Variable', 'Segoe UI', system-ui, -apple-system, sans-serif",
+      "note": "Clean carrier for decks and summaries"
+    },
+    "utility": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Timestamps, offsets, tags, palette hints"
+    }
+  },
+  "motion": {
+    "paradigm": "event-replay",
+    "note": "Opening a section replays it: current projection compacts (lines collapse upward), then the new section's content streams in as log entries — kicker, headline, summary, items — each line sliding in with a blinking caret at the write head. A Ctrl+K command palette fuzzy-filters sections. Custom pointer: precise caret/crosshair dot with a lagging ring, morphing over interactive elements, magnetic pull on buttons, subtle glow trail.",
+    "tempo": { "compact": 0.45, "streamStagger": 0.06, "lineIn": 0.35, "palette": 0.25 },
+    "eases": { "compact": "power2.in", "lineIn": "power3.out" },
+    "params": {
+      "commandPalette": true,
+      "caretBlinkSeconds": 1.1,
+      "magneticRadiusPx": 80,
+      "cursorRingLagSeconds": 0.14,
+      "offsetsAsMetadata": "items get fake log offsets derived from JSON order"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "pedalboard",
+  "name": "Pedalboard",
+  "inspiration": "The site as a pedalboard: every section is a stompbox in a classic finish — surf green, candy red, cream, burst gold — wired in a signal chain on black tolex. Stomp a pedal to open its section.",
+  "stage": "dark",
+  "palette": {
+    "tolex": "#141517",
+    "boneWhite": "#E9E7DE",
+    "surfPedal": "#7FC8B9",
+    "candyPedal": "#B3202C",
+    "creamPedal": "#EDE0BE",
+    "burstGold": "#C98A2D",
+    "ledRed": "#FF3B30",
+    "cable": "#3A3C40"
+  },
+  "type": {
+    "display": {
+      "stack": "'Archivo Black', 'Arial Black', 'Helvetica Neue', Arial, sans-serif",
+      "note": "Enclosure-print uppercase, like silkscreen on a stompbox"
+    },
+    "body": {
+      "stack": "'Archivo Variable', 'Segoe UI', system-ui, -apple-system, sans-serif",
+      "note": "Readable against tolex; short measures"
+    },
+    "utility": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Jack labels: IN, OUT, 9V DC, section indices"
+    }
+  },
+  "motion": {
+    "paradigm": "signal-chain",
+    "note": "Click stomps the pedal: it presses down (scale + shadow), its LED snaps on, then a patch cable draws itself (stroke-dashoffset) from the pedal's OUT jack toward the content panel, which slides in like a rack unit. Only one LED is lit at a time — the lit pedal is the open section.",
+    "tempo": { "stomp": 0.18, "cable": 0.6, "panel": 0.7, "stagger": 0.07 },
+    "eases": { "stomp": "power2.in", "cable": "none", "panel": "power3.out" },
+    "params": { "ledGlow": true, "pedalRows": 2, "knobsPerPedal": 3 }
+  }
+}

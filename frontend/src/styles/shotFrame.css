@@ -1,0 +1,86 @@
+/* ============================================================
+   SHOT FRAME — the browser-chrome frame, one implementation.
+   Worn by the projects showcase, the reading room's hero shot
+   and the markdown !image[] figure. Not a palette hex in sight:
+   the frame draws itself from currentColor, the finish's
+   --accent, and ONE token the host sets —
+
+     --sf-paper: the surface the frame sits on, i.e. what the
+     chrome bar's dots and address label are cut out of. It
+     cannot be derived from currentColor (that is the INK), so
+     each room declares it; the browser's Canvas is the fallback,
+     and --sf-bg below is the resolved value the rules use.
+   ============================================================ */
+
+.sf-shot { margin: 0; min-width: 0; }
+
+.sf-frame {
+  --sf-bg: var(--sf-paper, Canvas);
+  border: 1px solid color-mix(in srgb, currentColor 18%, var(--sf-bg));
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--sf-bg);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .05),
+    0 18px 40px -24px rgba(0, 0, 0, .28);
+  transition: box-shadow .25s ease, border-color .25s ease;
+}
+
+/* the graphite bar: the room's ink, all but solid */
+.sf-chrome {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .5rem .75rem;
+  background: color-mix(in srgb, currentColor 88%, var(--sf-bg));
+}
+.sf-dot {
+  width: .5rem; height: .5rem; border-radius: 50%;
+  background: color-mix(in srgb, var(--sf-bg) 26%, transparent);
+}
+/* the live one, in the finish's accent */
+.sf-dot:first-child { background: color-mix(in srgb, var(--accent, currentColor) 78%, var(--sf-bg)); }
+.sf-addr {
+  margin-left: .5rem; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .62rem; letter-spacing: .05em;
+  color: color-mix(in srgb, var(--sf-bg) 72%, transparent);
+  background: color-mix(in srgb, var(--sf-bg) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sf-bg) 16%, transparent);
+  border-radius: 99px;
+  padding: .16rem .65rem;
+}
+
+.sf-body { background: color-mix(in srgb, currentColor 4%, var(--sf-bg)); }
+.sf-img { display: block; width: 100%; height: auto; }
+
+.sf-caption {
+  margin: .6rem 0 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .65rem; letter-spacing: .05em;
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+.sf-caption[hidden] { display: none; }
+
+/* ---------------- a frame that opens the lightbox ----------------
+   The whole body becomes one button: one tab stop, one focus ring,
+   and the picture inside it is never draggable (a drag ghost over a
+   lightbox trigger is pure jank). */
+.sf-open {
+  display: block; width: 100%; padding: 0; border: 0; margin: 0;
+  background: none; color: inherit; cursor: zoom-in;
+  -webkit-user-select: none; user-select: none;
+}
+.sf-open .sf-img { -webkit-user-drag: none; }
+.sf-open:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: -3px; }
+/* restrained hover: keyline + shadow only — frames never move */
+.sf-shot--live:hover .sf-frame,
+.sf-shot--live:focus-within .sf-frame {
+  border-color: color-mix(in srgb, var(--accent, currentColor) 55%, var(--sf-bg));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .05),
+    0 22px 48px -22px rgba(0, 0, 0, .34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-frame { transition: none; }
+}

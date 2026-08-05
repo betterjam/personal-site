@@ -1,0 +1,252 @@
+/* ============================================================
+   MIXTAPE — base scaffolding (long-scroll production build)
+   Rail, footer, adaptive pointer, fx canvas and band bones,
+   ported from mockup 07. Every color flows through custom
+   properties the renderer sets at runtime from the theme JSONs
+   — scoped per band wrapper, so finishes never leak across
+   sections. No literal palette hex below; only neutral rgba()
+   shadow/sheen overlays.
+   ============================================================ */
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: auto; } /* the spine tweens scrolling itself */
+body {
+  margin: 0;
+  overflow-x: clip;
+  background: var(--mx-stage); /* set from the hub theme at boot; pre-JS paints the plain canvas */
+  font-family: var(--font-body, system-ui, sans-serif);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--mx-accent, currentColor); outline-offset: 2px; }
+
+/* particles fly above everything except the pointer */
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 900; pointer-events: none; }
+
+.mx-noscript {
+  display: block; max-width: 60ch; margin: 2rem auto; padding: 1rem;
+  border: 1px solid; font-size: .9375rem; line-height: 1.6;
+  font-family: system-ui, sans-serif;
+}
+
+/* ---------- persistent rail: the mixtape spine ----------
+   Tokens (--mx-bg / --mx-ink) come from the hub theme at runtime;
+   --mx-accent re-tints per active section band as you scroll. */
+.mixrail {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: stretch; gap: 1rem;
+  min-height: 3.25rem;
+  padding: 0 clamp(.8rem, 3vw, 1.6rem);
+  background: var(--mx-bg);
+  color: var(--mx-ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--mx-ink) 16%, transparent);
+}
+.mx-brand {
+  margin: 0; display: flex; align-items: baseline; gap: .55rem;
+  align-self: center; min-width: 0; white-space: nowrap;
+}
+.mx-name { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; font-size: .95rem; }
+.mx-role {
+  font-family: var(--font-mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--mx-ink) 55%, var(--mx-bg));
+}
+@media (max-width: 620px) { .mx-role { display: none; } }
+.mx-nav { margin-left: auto; overflow-x: auto; scrollbar-width: thin; display: flex; }
+/* overflow affordance: when tabs are clipped, the cut edge fades out so
+   "more" reads as a fade, not a stray glyph sliver (classes set by JS) */
+.mx-nav.has-more-r {
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 1) calc(100% - 2.2rem), rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 1) calc(100% - 2.2rem), rgba(0, 0, 0, 0));
+}
+.mx-nav.has-more-l {
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 2.2rem);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 2.2rem);
+}
+.mx-nav.has-more-l.has-more-r {
+  -webkit-mask-image: linear-gradient(90deg,
+    rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 2.2rem, rgba(0, 0, 0, 1) calc(100% - 2.2rem), rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(90deg,
+    rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 2.2rem, rgba(0, 0, 0, 1) calc(100% - 2.2rem), rgba(0, 0, 0, 0));
+}
+.mx-nav-row { display: flex; gap: .1rem; }
+.mx-btn {
+  flex: none; display: flex; align-items: baseline; gap: .4rem;
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 1rem .55rem .85rem; cursor: pointer;
+  font-family: var(--font-mono); font-size: .68rem; letter-spacing: .06em;
+  color: color-mix(in srgb, var(--mx-ink) 62%, var(--mx-bg));
+  transition: color .2s ease, border-bottom-color .2s ease;
+}
+.mx-btn:hover { color: var(--mx-ink); }
+.mx-btn.is-active { color: var(--mx-ink); border-bottom-color: var(--mx-accent); }
+.mx-btn.is-active .mx-idx { color: var(--mx-accent); }
+.mx-idx { font-size: .6rem; color: color-mix(in srgb, var(--mx-ink) 40%, var(--mx-bg)); }
+.mx-lbl { white-space: nowrap; }
+/* chrome shimmer: only while the active section wears Candy Apple */
+.mx-btn.is-active.is-chrome .mx-lbl {
+  background-image: linear-gradient(100deg,
+    var(--mx-chrome) 18%, var(--mx-ink) 38%, var(--mx-gold) 50%, var(--mx-ink) 62%, var(--mx-chrome) 82%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: mx-chrome 2.6s linear infinite;
+}
+@keyframes mx-chrome {
+  0%   { background-position: 125% 0; }
+  100% { background-position: -125% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-btn.is-active.is-chrome .mx-lbl { animation: none; background-image: none; color: var(--mx-ink); }
+}
+
+/* ---------- footer: same spine material ---------- */
+.mixfoot {
+  background: var(--mx-bg);
+  color: color-mix(in srgb, var(--mx-ink) 78%, var(--mx-bg));
+  border-top: 1px solid color-mix(in srgb, var(--mx-ink) 16%, transparent);
+}
+.mx-foot-row {
+  max-width: 76rem; margin-inline: auto;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.6rem;
+  padding: 1.1rem clamp(1rem, 4vw, 2.5rem) 1.4rem;
+  font-family: var(--font-mono); font-size: .72rem;
+}
+.mx-mail {
+  color: var(--mx-ink); text-decoration: underline;
+  text-decoration-color: var(--mx-accent); text-underline-offset: 3px;
+  transition: color .2s ease;
+}
+.mx-mail:hover { color: var(--mx-accent); }
+.mx-flinks { display: inline-flex; gap: 1rem; align-items: baseline; }
+.mx-flink {
+  color: color-mix(in srgb, var(--mx-ink) 82%, var(--mx-bg));
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--mx-accent) 60%, transparent);
+  text-underline-offset: 3px; letter-spacing: .05em;
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.mx-flink:hover { color: var(--mx-ink); text-decoration-color: var(--mx-accent); }
+.mx-loc { color: color-mix(in srgb, var(--mx-ink) 55%, var(--mx-bg)); }
+.mx-chip {
+  margin-left: auto;
+  border: 1px solid color-mix(in srgb, var(--mx-accent) 55%, transparent);
+  color: var(--mx-ink);
+  border-radius: 999px; padding: .32rem .8rem; letter-spacing: .04em;
+  transition: border-color .25s ease;
+}
+@media (max-width: 640px) { .mx-chip { margin-left: 0; } }
+/* published pages: quiet links, same register as the maintain entry */
+.mx-pages { display: inline-flex; gap: 1rem; align-items: baseline; }
+.mx-pages:empty { display: none; }
+.mx-pagelink {
+  color: color-mix(in srgb, var(--mx-ink) 62%, var(--mx-bg));
+  letter-spacing: .05em;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--mx-ink) 28%, transparent);
+  text-underline-offset: 3px;
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.mx-pagelink:hover, .mx-pagelink:focus-visible {
+  color: var(--mx-ink);
+  text-decoration-color: var(--mx-accent);
+}
+/* the maintainer console's quiet entry — low-contrast but legible */
+.mx-maintain {
+  color: color-mix(in srgb, var(--mx-ink) 52%, var(--mx-bg));
+  font-family: var(--font-mono); letter-spacing: .08em;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--mx-ink) 28%, transparent);
+  text-underline-offset: 3px;
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.mx-maintain:hover, .mx-maintain:focus-visible {
+  color: var(--mx-ink);
+  text-decoration-color: var(--mx-accent);
+}
+
+/* ---------- adaptive pointer: precision dot + lagging ring,
+     recolored via --mx-accent. Exists only under html.mx-has-pointer
+     (fine pointer AND motion allowed); JS builds the DOM. ---------- */
+html.mx-has-pointer body,
+html.mx-has-pointer button,
+html.mx-has-pointer a,
+html.mx-has-pointer summary { cursor: none; }
+.mx-cur-dot, .mx-cur-ring {
+  position: fixed; left: 0; top: 0;
+  pointer-events: none; z-index: 2147483000;
+  opacity: 0; will-change: transform;
+  transition: opacity .18s ease;
+}
+html.mx-cur-vis .mx-cur-dot, html.mx-cur-vis .mx-cur-ring { opacity: 1; }
+.mx-cur-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mx-accent, currentColor); }
+.mx-cur-ring {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1.5px solid var(--mx-accent, currentColor);
+  transition: opacity .18s ease, border-color .25s ease;
+}
+.mx-cur-ring.is-hot { border-color: color-mix(in srgb, var(--mx-accent) 55%, var(--mx-ink, currentColor)); }
+
+/* ---------- the deck: view wrappers, the cascade boundary ----------
+   Every view is a fixed panel filling the viewport below the sticky
+   rail; exactly one is displayed (.is-active). Each view root is its
+   own scroller — long content scrolls INTERNALLY, and native scroll
+   chaining hands the wheel back to the page (the track) at the inner
+   edges, so no overscroll-behavior here. main.ts sets each wrapper's
+   --p-* palette tokens, font stacks, --accent and --focus from its
+   theme JSON. Everything inside styles through var() only. */
+.vw {
+  position: fixed;
+  top: var(--mx-rail-h, 3.25rem);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: none;
+  overflow-y: auto;
+  overflow-x: clip;
+  font-family: var(--font-body);
+}
+.vw.is-active { display: block; }
+.vw :focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+
+/* ---------- the track: a body-height spacer keeps a real scrollbar ----
+   N * one viewport per view; the master ScrollTrigger maps its progress
+   to slot indices and snaps the thumb onto slots. */
+.mx-track {
+  height: calc(var(--mx-views, 1) * 100vh);
+  height: calc(var(--mx-views, 1) * 100svh);
+}
+.mx-col { max-width: 76rem; margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2.5rem); }
+.mx-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+
+/* ---------- shared section header rhythm ---------- */
+.mx-head { display: grid; gap: .9rem; padding-top: clamp(2rem, 6vh, 3.4rem); }
+
+/* ---------- shared 'Read the full page' band link ----------
+   Rendered by pageLink() (sections/types.ts) right after every
+   section summary; routes to the #/page/<sectionId> reading room.
+   Scoped tokens ONLY — each band's --accent/--focus/--font-mono
+   recolor it, so one class serves all eight finishes. */
+.mx-bandlink {
+  justify-self: start; /* grid headers (.mx-head): don't stretch */
+  align-self: flex-start; /* flex columns (e.g. the event stream) */
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  text-underline-offset: 3px;
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.mx-bandlink:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+.mx-bandlink:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+.mx-bandlink-arrow { display: inline-block; margin-left: .45em; text-decoration: none; }

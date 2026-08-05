@@ -1,0 +1,35 @@
+{
+  "id": "sunburst-editorial",
+  "name": "Three-Tone Sunburst",
+  "inspiration": "A three-tone sunburst dreadnought and the vinyl-sleeve editorials of the era: amber center, tobacco mid, near-black rim. A classic long-scroll magazine where every chapter opens through a burst.",
+  "stage": "light",
+  "palette": {
+    "paper": "#F3E9CF",
+    "ink": "#2B1F14",
+    "amber": "#E39B33",
+    "tobacco": "#96522A",
+    "burstEdge": "#221409",
+    "cream": "#EFE3C0"
+  },
+  "type": {
+    "display": {
+      "stack": "'Fraunces Variable', 'Palatino Linotype', Palatino, 'Book Antiqua', 'URW Palladio L', Georgia, serif",
+      "note": "Warm old-style serif, italic for kickers, large optical sizes"
+    },
+    "body": {
+      "stack": "'Newsreader Variable', Charter, 'Bitstream Charter', Cambria, Georgia, serif",
+      "note": "Bookish measure, ~65ch, generous leading"
+    },
+    "utility": {
+      "stack": "'Archivo Variable', 'Avenir Next', 'Segoe UI', system-ui, sans-serif",
+      "note": "Small caps eyebrows, folios, dates"
+    }
+  },
+  "motion": {
+    "paradigm": "scroll-chapters",
+    "note": "One long scroll driven by ScrollTrigger. Each section is a chapter: a radial sunburst gradient blooms open as the chapter pins, the headline settles letter-spaced into place, items reveal with a stagger. Scrubbed parallax on the burst art; nothing autoplays.",
+    "tempo": { "bloom": 1.0, "reveal": 0.7, "stagger": 0.12 },
+    "eases": { "bloom": "power2.out", "reveal": "power2.out" },
+    "params": { "pinChapterIntros": true, "burstParallax": 0.25, "progressRail": true }
+  }
+}

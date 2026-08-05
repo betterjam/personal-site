@@ -1,0 +1,79 @@
+/* ============================================================
+   STREAM — the Event Log replay (Lake Placid Blue), ported from
+   mockup 07. Every color flows through the scoped --p-* tokens
+   the renderer applies to .vw-ev; no hardcoded palette hex.
+   ============================================================ */
+
+.vw-ev { background: var(--p-stage); color: var(--p-ice); }
+
+.ev-inner {
+  display: flex; flex-direction: column; gap: 1.05rem;
+  padding-block: clamp(2rem, 6vh, 3.2rem) 3.4rem;
+}
+.ev-meta {
+  display: inline-flex; gap: .7rem; align-items: baseline;
+  font-family: var(--font-mono); font-size: .72rem; white-space: nowrap;
+}
+.ev-off { color: color-mix(in srgb, var(--p-ice) 40%, transparent); }
+.ev-ts { color: var(--p-solder); }
+.ev-path { color: color-mix(in srgb, var(--p-ice) 40%, transparent); letter-spacing: .03em; }
+.ev-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .74rem;
+  text-transform: uppercase; letter-spacing: .22em;
+  color: var(--p-glow);
+}
+.ev-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.45rem, 1rem + 2.6vw, 2.4rem);
+  line-height: 1.18; letter-spacing: -.01em; max-width: 28ch;
+  overflow-wrap: break-word;
+}
+.ev-summary {
+  margin: 0; font-size: .98rem;
+  color: color-mix(in srgb, var(--p-ice) 62%, transparent);
+  max-width: 62ch; line-height: 1.7;
+}
+.ev-entries { display: flex; flex-direction: column; gap: 1.2rem; padding-top: .3rem; }
+.ev-entry {
+  display: flex; flex-direction: column; gap: .45rem;
+  padding: 1.05rem 1.15rem;
+  background: color-mix(in srgb, var(--p-surface) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-ice) 7%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--p-lake-placid) 50%, transparent);
+  border-radius: 8px;
+}
+.ev-title { margin: 0; font-family: var(--font-display); font-size: 1.06rem; font-weight: 600; }
+.ev-deck {
+  margin: 0; font-size: .92rem;
+  color: color-mix(in srgb, var(--p-ice) 62%, transparent);
+  line-height: 1.65; max-width: 68ch;
+}
+.ev-tags {
+  display: flex; flex-wrap: wrap; gap: .35rem .6rem; align-items: baseline;
+  font-family: var(--font-mono); font-size: .68rem;
+  color: color-mix(in srgb, var(--p-ice) 40%, transparent);
+  padding-top: .2rem;
+}
+.ev-date { color: var(--p-solder); white-space: nowrap; }
+.ev-tail {
+  font-family: var(--font-mono); font-size: .72rem;
+  color: color-mix(in srgb, var(--p-ice) 40%, transparent);
+  letter-spacing: .06em; padding-top: .3rem;
+}
+
+/* write-head caret — CSS blink, paused while the band is off the belt */
+.ev-caret { display: block; padding-top: .35rem; }
+.ev-caret-i {
+  display: block; width: .6rem; height: 1.05rem;
+  background: var(--p-glow);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--p-glow) 30%, transparent);
+  animation: ev-blink var(--ev-blink, 1.1s) steps(1, end) infinite;
+}
+@keyframes ev-blink {
+  0%, 54% { opacity: 1; }
+  55%, 100% { opacity: .06; }
+}
+.vw-ev.is-offstage .ev-caret-i { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .ev-caret-i { animation: none; }
+}

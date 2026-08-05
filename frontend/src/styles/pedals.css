@@ -1,0 +1,174 @@
+/* ============================================================
+   PEDALS — every guitar item is a stompbox, ported from
+   mockup 07. Scoped under .vw-pd; every color flows through
+   the --p-* tokens the renderer applies (tolex, bone-white,
+   surf-pedal, candy-pedal, burst-gold, led-red, cable) plus
+   the per-pedal --finish / --ink3 the renderer sets inline.
+   No hardcoded palette hex — only neutral shadow rgba.
+   ============================================================ */
+.vw-pd {
+  background-color: var(--p-tolex);
+  color: var(--p-bone-white);
+  background-image:
+    radial-gradient(ellipse 130% 60% at 50% -8%, rgba(255, 255, 255, .05), transparent 55%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .22) 0 2px, transparent 2px 4px);
+}
+.pd-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .7rem;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-surf-pedal) 60%, var(--p-bone-white));
+}
+.pd-headline {
+  margin: 0; font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.8vw, 2.5rem); line-height: 1.12; letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--p-bone-white); text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
+  max-width: 26ch;
+}
+.pd-summary { margin: 0; font-size: .96rem; line-height: 1.65; max-width: 62ch; color: color-mix(in srgb, var(--p-bone-white) 84%, var(--p-tolex)); }
+.pd-board {
+  display: grid; grid-template-columns: repeat(auto-fit, 218px);
+  justify-content: center; gap: clamp(14px, 2.5vw, 28px);
+  margin-top: 1.8rem;
+}
+@media (max-width: 500px) { .pd-board { grid-template-columns: minmax(0, 240px); } }
+.pd-pedal {
+  position: relative; display: block; width: 100%;
+  background: none; border: 0; padding: 0 0 8px; cursor: pointer;
+  color: inherit; text-align: inherit; border-radius: 18px;
+  transition: transform .18s ease;
+}
+.pd-pedal:hover { transform: translateY(-3px); }
+.pd-pedal:focus-visible { outline: 3px dashed var(--focus); outline-offset: 6px; }
+/* while GSAP drops the pedal in, the hover transition must not fight it */
+.pd-pedal.is-dropping { transition: none; }
+.pd-shadow {
+  position: absolute; left: 7%; right: 7%; bottom: -3px; height: 14px;
+  border-radius: 50%; display: block;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, .6), transparent 70%);
+}
+.pd-enc {
+  position: relative; display: flex; flex-direction: column; gap: 6px;
+  height: 240px; border-radius: 14px; padding: 10px 12px 12px;
+  color: var(--ink3);
+  --knob-base: color-mix(in srgb, var(--ink3) 86%, var(--finish));
+  --knob-mark: var(--finish);
+  background-image:
+    radial-gradient(circle 2.5px at 13px 13px, rgba(0, 0, 0, .38) 2px, transparent 3px),
+    radial-gradient(circle 2.5px at calc(100% - 13px) 13px, rgba(0, 0, 0, .38) 2px, transparent 3px),
+    radial-gradient(circle 2.5px at 13px calc(100% - 13px), rgba(0, 0, 0, .38) 2px, transparent 3px),
+    radial-gradient(circle 2.5px at calc(100% - 13px) calc(100% - 13px), rgba(0, 0, 0, .38) 2px, transparent 3px),
+    linear-gradient(168deg,
+      color-mix(in srgb, var(--p-bone-white) 16%, var(--finish)) 0%,
+      var(--finish) 42%,
+      color-mix(in srgb, var(--p-tolex) 22%, var(--finish)) 100%);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, .5),
+              inset 0 1px 0 rgba(255, 255, 255, .3),
+              inset 0 -2px 4px rgba(0, 0, 0, .22);
+}
+.pd-ledzone { position: relative; display: flex; justify-content: center; height: 15px; flex: none; }
+.pd-led {
+  position: relative; display: block; width: 11px; height: 11px; border-radius: 50%;
+  background: color-mix(in srgb, var(--p-led-red) 26%, var(--p-tolex));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .6), 0 0 0 2px rgba(0, 0, 0, .28);
+}
+.pd-glow {
+  position: absolute; inset: 0; border-radius: 50%; opacity: 0; display: block;
+  background: var(--p-led-red);
+  box-shadow: 0 0 7px 2px var(--p-led-red),
+              0 0 20px 6px color-mix(in srgb, var(--p-led-red) 55%, transparent);
+}
+.pd-burst {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px;
+  margin: -13px 0 0 -13px; border-radius: 50%; display: block;
+  border: 2px solid var(--p-led-red); opacity: 0; pointer-events: none;
+}
+.pd-knobrow { display: flex; justify-content: space-between; gap: 4px; padding: 0 14px; flex: none; }
+.pd-kunit { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; flex: 1; }
+.pd-knob {
+  position: relative; display: block; width: 32px; height: 32px; border-radius: 50%; flex: none;
+  transform: rotate(var(--rot, 0deg));
+  background: radial-gradient(circle at 34% 30%,
+    color-mix(in srgb, var(--p-bone-white) 26%, var(--knob-base)),
+    var(--knob-base) 62%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .4),
+              inset 0 1px 1px rgba(255, 255, 255, .22),
+              0 0 0 2px rgba(0, 0, 0, .14);
+}
+.pd-knob::after {
+  content: ""; position: absolute; left: calc(50% - 1px); top: 2px;
+  width: 2px; height: 10px; border-radius: 1px;
+  background: var(--knob-mark);
+}
+.pd-klabel {
+  font-family: var(--font-mono); font-size: .625rem; letter-spacing: .03em;
+  color: var(--ink3); white-space: nowrap; overflow: hidden;
+  max-width: 100%; text-overflow: ellipsis;
+}
+.pd-jack { position: absolute; top: 100px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.pd-jack-in { right: 7px; }
+.pd-jack-out { left: 7px; }
+.pd-jacknut {
+  display: block; width: 11px; height: 11px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    var(--p-tolex) 0 2.5px,
+    color-mix(in srgb, var(--p-bone-white) 45%, var(--p-cable)) 3px 5px,
+    color-mix(in srgb, var(--p-tolex) 55%, var(--p-cable)) 5px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+.pd-jacktag { font-family: var(--font-mono); font-size: .625rem; letter-spacing: .06em; color: var(--ink3); opacity: .85; }
+.pd-name {
+  margin-top: 4px; padding: 5px 20px 0; min-height: 2.3em;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: .8125rem; line-height: 1.2;
+  letter-spacing: .06em; text-transform: uppercase; text-align: center;
+}
+.pd-stomp { margin-top: auto; display: flex; justify-content: center; padding-bottom: 4px; flex: none; }
+.pd-cap {
+  position: relative; display: block; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%,
+    color-mix(in srgb, var(--p-bone-white) 65%, var(--p-cable)),
+    color-mix(in srgb, var(--p-bone-white) 20%, var(--p-cable)) 52%,
+    color-mix(in srgb, var(--p-tolex) 45%, var(--p-cable)) 78%);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .45),
+              inset 0 2px 3px rgba(255, 255, 255, .35),
+              inset 0 -3px 5px rgba(0, 0, 0, .4),
+              0 0 0 4px color-mix(in srgb, var(--p-tolex) 30%, var(--finish)),
+              0 0 0 5px rgba(0, 0, 0, .25);
+}
+.pd-cap::after {
+  content: ""; position: absolute; inset: 7px; border-radius: 50%;
+  border: 1.5px dashed rgba(0, 0, 0, .28);
+}
+.pd-deckpanel {
+  display: none;
+  margin: 1.6rem auto 3.6rem; max-width: 46rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--p-bone-white) 18%, transparent);
+  border-top: 3px solid var(--pd-accent, var(--p-led-red));
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--p-bone-white) 12%, var(--p-tolex)),
+    color-mix(in srgb, var(--p-bone-white) 6%, var(--p-tolex)));
+  padding: 1.1rem 1.3rem 1.3rem;
+}
+.pd-deckpanel.is-open { display: grid; gap: .5rem; }
+.pd-deck-title { margin: 0; font-family: var(--font-display); font-size: 1rem; letter-spacing: .05em; text-transform: uppercase; }
+.pd-deck-text { margin: 0; font-size: .94rem; line-height: 1.62; color: color-mix(in srgb, var(--p-bone-white) 80%, var(--p-tolex)); }
+.pd-deck-tags { list-style: none; margin: .2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-bone-white) 80%, var(--p-tolex));
+  border: 1px solid color-mix(in srgb, var(--p-bone-white) 22%, transparent);
+  border-radius: 999px; padding: 3px 9px 3px 6px;
+}
+.pd-chipjack {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--p-bone-white) 45%, var(--p-tolex));
+  background: var(--p-tolex);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-pedal { transition: none; }
+  .pd-pedal:hover { transform: none; }
+}

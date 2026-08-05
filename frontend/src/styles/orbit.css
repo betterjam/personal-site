@@ -1,0 +1,115 @@
+/* ============================================================
+   ORBIT — Surf Green knobs around the tortoiseshell pick,
+   ported from mockup 07. Scoped under .vw-orb; every color
+   flows through the --p-* tokens the renderer applies.
+   ============================================================ */
+.vw-orb {
+  background-color: var(--p-canvas);
+  color: var(--p-ink);
+  background-image:
+    radial-gradient(circle at 50% 32%, color-mix(in srgb, var(--p-canvas) 62%, white) 0%, transparent 42%),
+    repeating-radial-gradient(circle at 50% 32%, color-mix(in srgb, var(--p-ink) 4%, transparent) 0 1px, transparent 1px 9px);
+}
+.orb-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .24em;
+  color: color-mix(in srgb, var(--p-surf-deep) 45%, var(--p-ink));
+}
+.orb-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em;
+  font-size: clamp(1.7rem, 4.4vw, 3rem); line-height: 1.08;
+  color: var(--p-surf-deep); max-width: 24ch;
+}
+.orb-summary { margin: 0; font-size: clamp(.98rem, 1.4vw, 1.1rem); line-height: 1.65; max-width: 62ch; }
+.orb-stage {
+  position: relative;
+  height: clamp(290px, 52vmin, 430px);
+  margin-block: .6rem;
+  --orb-r: clamp(104px, 17vmin, 158px);
+  --disc: clamp(82px, 12.5vmin, 112px);
+}
+.orb-ring {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--orb-r) * 2); height: calc(var(--orb-r) * 2);
+  margin: calc(var(--orb-r) * -1) 0 0 calc(var(--orb-r) * -1);
+  border: 1px dashed color-mix(in srgb, var(--p-ink) 26%, transparent);
+  border-radius: 50%;
+}
+.orb-pick {
+  position: absolute; left: 50%; top: 50%;
+  width: clamp(70px, 10.5vmin, 100px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.orb-pick-svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 .8vmin 1.8vmin color-mix(in srgb, var(--p-ink) 32%, transparent)); }
+.orb-pick-txt {
+  fill: var(--p-brass);
+  font-family: var(--font-mono);
+  font-size: 22px; letter-spacing: .18em; text-transform: uppercase;
+}
+.orb-knob {
+  position: absolute; left: 50%; top: 50%;
+  width: var(--disc); height: var(--disc);
+  margin: calc(var(--disc) * -.5) 0 0 calc(var(--disc) * -.5);
+  padding: 0; border: 0; background: none; border-radius: 50%;
+  cursor: pointer;
+  transform: rotate(var(--ang)) translateY(calc(var(--orb-r) * -1)) rotate(calc(var(--ang) * -1));
+}
+/* the pop wrapper: the entrance scales THIS, never the positioned button */
+.orb-kpop { position: absolute; inset: 0; display: block; border-radius: 50%; }
+.orb-disc {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-conic-gradient(var(--p-brass) 0deg 5deg, color-mix(in srgb, var(--p-brass) 55%, var(--p-ink)) 5deg 10deg);
+  box-shadow: 0 calc(var(--disc) * .035) calc(var(--disc) * .1) color-mix(in srgb, var(--p-ink) 30%, transparent);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.orb-disc::before {
+  content: ""; position: absolute; inset: calc(var(--disc) * .075); border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%,
+    color-mix(in srgb, var(--p-surf) 82%, white) 0%,
+    var(--p-surf) 52%,
+    color-mix(in srgb, var(--p-surf) 84%, var(--p-ink)) 100%);
+  box-shadow:
+    inset 0 calc(var(--disc) * .015) calc(var(--disc) * .04) color-mix(in srgb, white 50%, transparent),
+    inset 0 calc(var(--disc) * -.025) calc(var(--disc) * .06) color-mix(in srgb, var(--p-ink) 26%, transparent);
+}
+.orb-knob:hover .orb-disc { transform: scale(1.05); }
+.orb-knob.is-on .orb-disc {
+  transform: scale(1.1);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--p-brass) 80%, transparent),
+    0 calc(var(--disc) * .05) calc(var(--disc) * .14) color-mix(in srgb, var(--p-ink) 36%, transparent);
+}
+.orb-klbl {
+  position: absolute; inset: 12%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: max(10px, 1.5vmin); letter-spacing: .07em; text-transform: uppercase;
+  text-align: center; line-height: 1.25; overflow-wrap: anywhere;
+  color: var(--p-ink);
+}
+.orb-klbl--sm { font-size: max(9px, 1.15vmin); letter-spacing: .04em; }
+.orb-card {
+  max-width: 46rem;
+  margin-bottom: 3.4rem;
+  background: var(--p-canvas);
+  border: 1px solid color-mix(in srgb, var(--p-ink) 10%, transparent);
+  border-radius: 16px;
+  padding: clamp(1rem, 2.2vw, 1.6rem);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--p-surf-deep) 20%, transparent);
+  display: grid; gap: .55rem;
+}
+.orb-card-title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.12rem; letter-spacing: .02em; }
+.orb-card-deck { margin: 0; font-size: .95rem; line-height: 1.65; color: color-mix(in srgb, var(--p-ink) 90%, var(--p-canvas)); }
+.orb-tags { list-style: none; margin: .2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.orb-tag {
+  font-family: var(--font-mono); font-size: .68rem;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--p-brass) 55%, var(--p-canvas));
+  background: color-mix(in srgb, var(--p-brass) 12%, var(--p-canvas));
+  color: color-mix(in srgb, var(--p-tortoise) 70%, var(--p-ink));
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb-disc { transition: none; }
+}

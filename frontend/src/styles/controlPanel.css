@@ -1,0 +1,189 @@
+/* ============================================================
+   CONTROL PANEL — the iac section IS the ops console demo
+   (seafoam stage; echoes Diego's real infra panel). From
+   mockup 07. All colors via scoped tokens (--p-*) set at
+   runtime by the renderer. No hardcoded palette hex.
+   ============================================================ */
+.vw-cp { background: var(--p-bone); color: var(--p-graphite); }
+.cp-kicker {
+  margin: 0; font-family: var(--font-mono); font-size: .6875rem;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--p-seafoam-deep);
+}
+.cp-headline {
+  margin: 0; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 1.02; letter-spacing: -.03em; max-width: 22ch;
+}
+.cp-summary { margin: 0; font-size: clamp(1rem, 1.4vw, 1.12rem); line-height: 1.65; max-width: 62ch; }
+.cp-console {
+  margin-top: 1.6rem;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone));
+  background: color-mix(in srgb, var(--p-seafoam) 12%, var(--p-bone));
+  border-radius: 14px;
+  padding: clamp(1rem, 2.5vw, 1.7rem);
+  display: grid; gap: 1.2rem;
+}
+.cp-conhead {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1rem;
+  font-family: var(--font-mono); font-size: .68rem;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone));
+}
+.cp-note { letter-spacing: .08em; text-transform: none; }
+.cp-archwrap { overflow-x: auto; padding-bottom: .2rem; scrollbar-width: thin; }
+.cp-arch {
+  position: relative;
+  display: flex; align-items: center; gap: .6rem;
+  min-width: 540px;
+  padding: .9rem .3rem;
+}
+.cp-node {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: .45rem;
+  background: color-mix(in srgb, var(--p-bone) 30%, white);
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 14%, var(--p-bone));
+  border-radius: 10px; padding: .5rem .8rem;
+  font-family: var(--font-mono); font-size: .7rem; letter-spacing: .04em;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--p-graphite) 8%, transparent);
+  transition: opacity .25s ease;
+}
+.cp-node.is-dim { opacity: .35; }
+.cp-node-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--p-seafoam-deep);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--p-seafoam-deep) 60%, transparent);
+  transition: background-color .25s ease, box-shadow .25s ease;
+}
+.cp-node.is-dim .cp-node-dot { background: color-mix(in srgb, var(--p-graphite) 40%, var(--p-bone)); box-shadow: none; }
+.cp-wire { flex: 1; min-width: 1.6rem; height: 2px; background: color-mix(in srgb, var(--p-graphite) 20%, var(--p-bone)); }
+.cp-flow { position: absolute; left: 1.4rem; right: 1.4rem; top: 50%; height: 0; z-index: 0; }
+.cp-packet {
+  position: absolute; left: -4px; top: -4px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--p-seafoam-deep);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--p-seafoam-deep) 70%, transparent);
+  transition: opacity .25s ease;
+}
+.cp-arch.is-down .cp-packet { opacity: .12; }
+.vw-cp.is-rm .cp-packet { left: 50%; }
+.cp-svcs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .8rem; }
+.cp-svc {
+  background: color-mix(in srgb, var(--p-bone) 30%, white);
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 12%, var(--p-bone));
+  border-radius: 12px; padding: .85rem .95rem;
+  display: grid; gap: .65rem;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--p-graphite) 7%, transparent);
+}
+.cp-svc-top { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.cp-dot {
+  flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--p-seafoam-deep);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--p-seafoam-deep) 60%, transparent);
+  transition: background-color .2s ease, box-shadow .2s ease;
+}
+.cp-svc.is-off .cp-dot { background: color-mix(in srgb, var(--p-graphite) 35%, var(--p-bone)); box-shadow: none; }
+.cp-svc-name { font-family: var(--font-display); font-weight: 800; font-size: .95rem; letter-spacing: -.01em; }
+.cp-type {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: .62rem; text-transform: lowercase;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 18%, var(--p-bone));
+  border-radius: 4px; padding: .08rem .4rem;
+  color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone));
+}
+.cp-svc-bot { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.cp-chip {
+  font-family: var(--font-mono); font-size: .68rem;
+  border-radius: 999px; padding: .22rem .6rem;
+  background: color-mix(in srgb, var(--p-seafoam) 32%, var(--p-bone));
+  color: var(--p-pine);
+  transition: background-color .2s ease, color .2s ease;
+}
+.cp-svc.is-off .cp-chip {
+  background: color-mix(in srgb, var(--p-graphite) 10%, var(--p-bone));
+  color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone));
+}
+.cp-pill {
+  position: relative; flex: none;
+  width: 52px; height: 24px; padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  background: color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+.cp-pill.is-on { background: color-mix(in srgb, var(--p-seafoam-deep) 80%, var(--p-bone)); }
+.cp-pill-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--p-bone);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform .2s ease;
+}
+.cp-pill.is-on .cp-pill-knob { transform: translateX(26px); }
+.cp-pill-txt {
+  position: absolute; top: 50%; transform: translateY(-50%); right: 7px;
+  font-family: var(--font-mono); font-size: .55rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-graphite) 55%, var(--p-bone));
+}
+.cp-pill.is-on .cp-pill-txt { right: auto; left: 8px; color: var(--p-bone); }
+.cp-rules { display: grid; gap: .5rem; }
+.cp-rules-title {
+  margin: 0;
+  font-family: var(--font-mono); font-size: .68rem;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone));
+}
+.cp-rule {
+  display: grid; grid-template-columns: minmax(7rem, 10rem) minmax(7rem, 10rem) 1fr auto;
+  align-items: center; gap: .5rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 12%, var(--p-bone));
+  background: color-mix(in srgb, var(--p-bone) 42%, white);
+  border-radius: 10px; padding: .55rem .8rem;
+  font-family: var(--font-mono); font-size: .72rem;
+}
+.cp-rule-name { color: var(--p-pine); }
+.cp-rule-when { color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone)); }
+.cp-rule-what { color: var(--p-graphite); }
+@media (max-width: 620px) {
+  .cp-rule { grid-template-columns: 1fr auto; }
+  .cp-rule-when, .cp-rule-what { grid-column: 1; }
+  .cp-switch { grid-row: 1; grid-column: 2; }
+}
+.cp-switch {
+  position: relative; flex: none; justify-self: end;
+  width: 40px; height: 20px; padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  background: color-mix(in srgb, var(--p-graphite) 16%, var(--p-bone));
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+.cp-switch.is-on { background: color-mix(in srgb, var(--p-seafoam-deep) 80%, var(--p-bone)); }
+.cp-switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--p-bone);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  transition: transform .2s ease;
+}
+.cp-switch.is-on .cp-switch-knob { transform: translateX(20px); }
+.cp-items {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: .9rem; margin: 1.4rem 0 3.6rem;
+}
+.cp-item {
+  border: 1px solid color-mix(in srgb, var(--p-graphite) 12%, var(--p-bone));
+  border-left: 3px solid var(--p-seafoam-deep);
+  background: color-mix(in srgb, var(--p-bone) 55%, white);
+  border-radius: 10px; padding: .95rem 1rem;
+  display: grid; gap: .45rem; align-content: start;
+}
+.cp-item-title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1rem; letter-spacing: -.01em; }
+.cp-item-deck { margin: 0; font-size: .9rem; line-height: 1.6; color: color-mix(in srgb, var(--p-graphite) 78%, var(--p-bone)); }
+.cp-item-tags {
+  margin: 0; display: flex; flex-wrap: wrap; gap: .25rem .7rem;
+  font-family: var(--font-mono); font-size: .65rem;
+  color: color-mix(in srgb, var(--p-graphite) 60%, var(--p-bone));
+}

@@ -1,0 +1,15 @@
+{
+  "note": "Rendered in the under-construction banner on the home page. Status: done | doing | next.",
+  "items": [
+    { "title": "Design exploration — six finishes, one content.json", "status": "done" },
+    { "title": "Mixtape composition: per-section themes + particle transitions", "status": "done" },
+    { "title": "Event-sourced blog API (NestJS, append-only log, replay on boot)", "status": "done" },
+    { "title": "Scroll-animated frontend — every section choreographed with GSAP", "status": "doing" },
+    { "title": "This banner: commit stamps + deploys as events", "status": "doing" },
+    { "title": "CDK stack: ECS Fargate ARM + RDS t4g.micro, panel-schedulable", "status": "next" },
+    { "title": "Pipeline eleva-blog-prod → ops panel card", "status": "next" },
+    { "title": "IaC section wired read-only to the real control plane", "status": "next" },
+    { "title": "Custom domain + the lights-out schedule", "status": "next" },
+    { "title": "Convince Claude that true bypass matters", "status": "next" }
+  ]
+}

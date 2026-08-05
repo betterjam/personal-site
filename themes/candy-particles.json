@@ -1,0 +1,35 @@
+{
+  "id": "candy-particles",
+  "name": "Candy Apple Burst",
+  "inspiration": "Candy Apple Red metallic under stage lights: a near-black stage with a red-biased tint, chrome hardware, and the gold undercoat Fender sprayed beneath the candy. Sections shatter into particles and reassemble.",
+  "stage": "dark",
+  "palette": {
+    "stage": "#100A0B",
+    "bone": "#F4EFE6",
+    "candy": "#B3202C",
+    "candyDeep": "#7E1119",
+    "goldBase": "#C79A4B",
+    "chrome": "#D6D9DE"
+  },
+  "type": {
+    "display": {
+      "stack": "'Barlow Condensed', Bahnschrift, 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+      "note": "Condensed, tall, tight — chrome-logo energy, used only for headlines"
+    },
+    "body": {
+      "stack": "'Archivo Variable', 'Segoe UI', system-ui, -apple-system, sans-serif",
+      "note": "Neutral carrier so the particles and red own the drama"
+    },
+    "utility": {
+      "stack": "'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace",
+      "note": "Particle counts, tags, nav indices"
+    }
+  },
+  "motion": {
+    "paradigm": "particle-morph",
+    "note": "On section change the outgoing headline is rasterized to an offscreen canvas and exploded into particles; the swarm drifts, then converges to paint the incoming headline while the body content crossfades up. Canvas sits behind the DOM; GSAP drives swarm timing and DOM choreography from one timeline.",
+    "tempo": { "disperse": 0.9, "swarm": 0.5, "converge": 1.1, "reveal": 0.5 },
+    "eases": { "disperse": "power2.in", "converge": "power3.out" },
+    "params": { "particleCount": 2200, "particleSizePx": 2.5, "scatterRadiusVmax": 60 }
+  }
+}

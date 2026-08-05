@@ -1,0 +1,87 @@
+{
+  "id": "mixtape",
+  "name": "Mixtape",
+  "inspiration": "One site, every finish: the Seafoam Studio grid is home, the Candy Apple particle swarm carries you between sections, and each section arrives wearing its own finish — like flipping through a mixtape of the five other themes.",
+  "stage": "light",
+  "hub": {
+    "theme": "seafoam-studio",
+    "renderer": "grid",
+    "note": "The Swiss card grid from Seafoam Studio, unchanged: masthead, 12-col grid, mono coords, pine card for guitars, seafoam for blog."
+  },
+  "transition": {
+    "engine": "particle-morph",
+    "theme": "candy-particles",
+    "recolorInFlight": true,
+    "note": "Leaving a view, its headline shatters into particles tinted in the CURRENT section's palette; mid-swarm the particles recolor toward the TARGET section's palette and reassemble as its headline — the swarm literally carries you from one finish to the next. Reduced motion: crossfade.",
+    "tempo": {
+      "disperse": 0.8,
+      "swarm": 0.45,
+      "converge": 1.0,
+      "reveal": 0.5
+    },
+    "params": {
+      "particleCount": 2000,
+      "particleSizePx": 2.5,
+      "scatterRadiusVmax": 55
+    }
+  },
+  "sections": {
+    "projects": {
+      "theme": "seafoam-studio",
+      "renderer": "showcase",
+      "note": "Professional case studies: each project as a browser-framed snapshot with copy beside it, alternating rows. Real screenshots where they exist (control panel dashboard/architecture, the blog maintainer console); tasteful stylized frames elsewhere."
+    },
+    "backend": {
+      "theme": "seafoam-studio",
+      "renderer": "strips",
+      "note": "Swiss channel-strip list — boring on purpose, precise where it counts."
+    },
+    "frontend": {
+      "theme": "candy-particles",
+      "renderer": "stage",
+      "note": "Dark chrome stage, condensed display, shimmer on the active item."
+    },
+    "integrations": {
+      "theme": "pedalboard",
+      "renderer": "patch-bay",
+      "note": "A wall of jack sockets; each item is a patch connection — a cable draws between two jacks when its entry opens. Where systems shake hands."
+    },
+    "event-sourcing": {
+      "theme": "event-log",
+      "renderer": "stream",
+      "note": "The full Event Log replay: offsets, timestamps, write-head caret, Lake Placid Blue."
+    },
+    "distributed-systems": {
+      "theme": "surf-orbit",
+      "renderer": "orbit",
+      "note": "Items as nodes orbiting a hub — the topology is the layout."
+    },
+    "iac": {
+      "theme": "seafoam-studio",
+      "renderer": "control-panel",
+      "note": "A working demo of Diego's real infra control panel: white service cards with green status dots and On/Off power pills, a mini tiered architecture strip with an animated packet flow, and a scheduling-rules table with toggle switches. Demo state is local — flipping Api off dims its node and stops the flow. The section's three items become the console's service descriptions."
+    },
+    "guitars": {
+      "theme": "pedalboard",
+      "renderer": "pedals",
+      "note": "EACH ITEM IS A STOMPBOX: three pedals in different finishes, knobs, LED, silkscreen title; stomping one lights its LED and expands its deck below the board."
+    },
+    "blog": {
+      "theme": "sunburst-editorial",
+      "renderer": "editorial",
+      "note": "Burst masthead band, serif ledes, dated entries in the margin — a reading room."
+    }
+  },
+  "themeRefs": [
+    "seafoam-studio",
+    "candy-particles",
+    "surf-orbit",
+    "pedalboard",
+    "event-log",
+    "sunburst-editorial"
+  ],
+  "notes": {
+    "scoping": "Each section view mounts inside a wrapper that carries that finish's palette/type tokens as scoped CSS custom properties — themes never leak across sections.",
+    "contract": "themeRefs are resolved against themes/<id>.json; a mockup embeds each referenced theme verbatim in its own script block (id=\"theme-<id>\") so the byte-parity verification still holds per theme."
+  }
+}
