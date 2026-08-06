@@ -542,12 +542,20 @@ export class DiegoSiteStack extends FencedStack {
           },
           build: {
             commands: [
+              /*
+               * Build context is the REPO ROOT, not app/ — the image copies
+               * content/ and themes/ so the API ships the authored pages and
+               * can seed them (with an app/ context the build dies on
+               * `COPY content ./content: "/content": not found`, and a green
+               * container then serves an empty site). Same shape as the other
+               * eleva pipelines: `docker build -f <dockerfile> ... .`
+               */
               'docker build'
                 + ' --build-arg GIT_SHA="${GIT_SHA}"'
                 + ' --build-arg BUILD_TIME="${BUILD_TIME}"'
                 + ' -t "${ECR_REPO_URI}:${GIT_SHA}"'
                 + ' -t "${ECR_REPO_URI}:latest"'
-                + ' app',
+                + ' -f app/Dockerfile .',
             ],
           },
           post_build: {

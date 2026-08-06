@@ -20,6 +20,10 @@ UTFSM is an engineering school in the old sense: theory first, and no sympathy f
 
 That foundation is why I reach for the primitive rather than the framework when a system gets strange. Queues, logs, transactions, consistency models and failure modes aren't buzzwords I picked up from a conference talk; they're the vocabulary I was taught to think in. Frameworks age out every few years. Fundamentals are why the next one takes a weekend instead of a quarter.
 
+## The short career
+
+Running [Eleva](#/page/eleva-platform) since 2017 (Startup Chile Ignite, 2020), building hybrid commerce platforms where an on-premise register and a cloud storefront have to agree, and doing the occasional small build for people I like. The full version is on the [experience page](#/page/experience).
+
 ## Elsewhere
 
 - [GitHub](https://github.com/betterjam) — where the code lives

@@ -12,6 +12,8 @@ I take on a small amount of consulting alongside my main work. The honest scope:
 
 ## Background
 
+*Full history on the [experience page](#/page/experience).*
+
 B.Eng. in Computer Science from **Universidad Técnica Federico Santa María** in Chile, and roughly a decade since spent building platforms that stay up: a school-evaluation SaaS I've run since 2017 ([Eleva](#/page/eleva-platform), Startup Chile Ignite 2020) and hybrid commerce systems where an on-premise register and a cloud storefront have to agree.
 
 ## How I work
