@@ -9,13 +9,17 @@
  * PAGE BLOCKS — the projects section no longer authors its copy inline.
  * Each item is { "page": "<slug>", "tags": [...] } and the copy comes from
  * the published page itself (title + summary, or its first paragraph),
- * resolved async through resolvePageCard(). Consequences, by design:
+ * resolved async through resolvePageCardEntry(). Consequences, by design:
  *   - the row paints IMMEDIATELY as a frame plus a title placeholder and
  *     fills in when the page lands — the band never waits on the network;
  *   - the whole copy card is a real anchor to '#/page/<slug>', so the
  *     reading room opens with a genuine history entry behind it;
- *   - a page that is unpublished (or unknown) resolves to null and its
- *     row is REMOVED — the band collapses around it, no ghost card;
+ *   - a row is REMOVED only on a 'hidden' resolution — the LIVE API said
+ *     the page is unpublished, or no such slug exists in the API or the
+ *     bundled snapshot. An API that is switched off resolves from the
+ *     snapshot instead: this band is the site's flagship section and an
+ *     unreachable backend must never be able to empty it (that is exactly
+ *     what it used to do, and why the snapshot exists);
  *   - a page that names a `repo` gets the GitHub widget under its copy
  *     (engine/repoCard.ts). It is a second link, so it sits BESIDE the
  *     copy anchor in the row's copy column, never nested inside it.
@@ -43,7 +47,7 @@ import { gsap } from 'gsap';
 import { pad2 } from '../engine/themes';
 import {
   isPageBlock,
-  resolvePageCard,
+  resolvePageCardEntry,
   type InlineItem,
   type PageBlock,
   type PageCard,
@@ -463,15 +467,18 @@ export const buildShowcase: SectionBuilder = (host, section, _index, ctx) => {
     deck.appendChild(el('span', 'sc-skel'));
     deck.appendChild(el('span', 'sc-skel sc-skel--short'));
 
-    void resolvePageCard(slug).then((card) => {
-      if (card === null) {
-        /* draft, unpublished or unknown — the row collapses entirely */
+    void resolvePageCardEntry(slug).then((res) => {
+      if (res.state === 'hidden') {
+        /* the LIVE API said draft/unpublished/unknown, or the slug exists
+           nowhere at all — only then does the row collapse. A silent API
+           never reaches this branch: it resolves from the snapshot. */
         const at = rows.indexOf(row);
         if (at >= 0) rows.splice(at, 1);
         row.root.remove();
         reindex();
         return;
       }
+      const card = res.card;
       copy.classList.remove('is-loading');
       title.textContent = card.title;
       deck.textContent = card.summary;

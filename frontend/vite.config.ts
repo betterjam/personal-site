@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
+import { pageFromSeedFile, type SnapshotPage } from './src/build/pageSeed';
 
 /**
  * Build stamp — a truthful fallback for the under-construction banner when
@@ -192,8 +193,86 @@ function assetMeta(): Plugin {
   };
 }
 
+/* ====================================================== page snapshot ===
+   THE FLOOR THE SITE STANDS ON WHEN THE API IS OFF.
+
+   This site is designed to run with its infrastructure switched off — the
+   public control plane at control.diegopalominos.dev lets a visitor stop
+   it like turning off a light. Section rows, the reading room and the
+   markdown '!page[…]' embeds all read their copy from /api/pages/<slug>,
+   so with the API stopped the site used to delete its own Projects
+   section. It must instead stay FULLY READABLE and merely become richer
+   when the API answers.
+
+   Every page already lives in the repo at content/pages/*.md — the very
+   corpus the API seeds itself from on first boot. This plugin parses those
+   files with the SERVER's semantics (src/build/pageSeed.ts) and serves
+   them as `virtual:page-snapshot`: a plain, build-time array, no runtime
+   fetch, no top-level await, no Markdown parser shipped to the browser.
+   src/engine/snapshot.ts lifts it into the API's own PageView shape.
+
+   Nothing is generated into the repo: the snapshot is recomputed from the
+   files themselves on every build and can never go stale. */
+
+const PAGES_DIR = fileURLToPath(new URL('../content/pages', import.meta.url));
+const PAGES_VIRTUAL_ID = 'virtual:page-snapshot';
+const PAGES_RESOLVED_ID = '\0' + PAGES_VIRTUAL_ID;
+
+function pageSnapshot(): Plugin {
+  return {
+    name: 'diego-site:page-snapshot',
+    resolveId(id) {
+      return id === PAGES_VIRTUAL_ID ? PAGES_RESOLVED_ID : null;
+    },
+    load(id) {
+      if (id !== PAGES_RESOLVED_ID) return null;
+      let names: string[];
+      try {
+        names = readdirSync(PAGES_DIR);
+      } catch {
+        /* no pages directory is a real state — an empty snapshot, and the
+           site simply has no floor to fall back to */
+        this.warn(`page-snapshot: no pages directory at ${PAGES_DIR} — snapshot is empty`);
+        return 'export default [];\n';
+      }
+      /* filename order, exactly like the seeder's, so the bundled corpus
+         and the seeded log are the same corpus in the same order */
+      const files = names.filter((name) => name.endsWith('.md')).sort();
+      const pages: SnapshotPage[] = [];
+      let bytes = 0;
+      for (const file of files) {
+        const full = join(PAGES_DIR, file);
+        this.addWatchFile(full); /* dev: editing a page reloads the snapshot */
+        const raw = readFileSync(full, 'utf8');
+        bytes += raw.length;
+        const { page, warnings } = pageFromSeedFile(file.slice(0, -'.md'.length), raw);
+        for (const warning of warnings) this.warn(`page-snapshot: ${warning}`);
+        pages.push(page);
+      }
+      this.info(
+        `page-snapshot: ${pages.length} page(s), ${(bytes / 1024).toFixed(1)} kB of authored Markdown`,
+      );
+      return `export default ${JSON.stringify(pages)};\n`;
+    },
+    /* a page added, renamed or deleted while `vite dev` runs is a new
+       snapshot — invalidate the virtual module and reload the page */
+    configureServer(server) {
+      server.watcher.add(PAGES_DIR);
+      const touched = (file: string): void => {
+        const path = file.replace(/\\/g, '/');
+        if (!path.endsWith('.md') || !path.includes('/content/pages/')) return;
+        const mod = server.moduleGraph.getModuleById(PAGES_RESOLVED_ID);
+        if (mod) server.moduleGraph.invalidateModule(mod);
+        server.ws.send({ type: 'full-reload' });
+      };
+      server.watcher.on('add', touched);
+      server.watcher.on('unlink', touched);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [assetMeta()],
+  plugins: [assetMeta(), pageSnapshot()],
   build: {
     outDir: '../app/public',
     emptyOutDir: true,

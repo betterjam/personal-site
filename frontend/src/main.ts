@@ -25,7 +25,7 @@ import {
   ROADMAP,
   THEMES,
   fetchMeta,
-  fetchPages,
+  resolvePageList,
   type MixtapeSection,
 } from './engine/data';
 import { abbr, accentOf, applyTokens, pad2, stageOf } from './engine/themes';
@@ -368,19 +368,17 @@ initMaintain(reduced);
    Seafoam finish; deep links land over whatever view the hash routed to */
 initPageRoom(reduced);
 
-/* published pages → quiet footer links, async and silent on failure
-   (an empty pages list is a real state — the footer just stays quiet) */
-void fetchPages()
-  .then((pages) => {
-    for (const pg of pages) {
-      const a = el('a', 'mx-pagelink', pg.title);
-      a.href = '#/page/' + encodeURIComponent(pg.slug);
-      pagesSlot.appendChild(a);
-    }
-  })
-  .catch(() => {
-    /* API offline or pages not deployed yet — nothing to add */
-  });
+/* published pages → quiet footer links. The API answers first; when it
+   says nothing the bundled snapshot does, so the site keeps its index of
+   pages with the infrastructure switched off. An empty list from a LIVE
+   API is a real state — the footer just stays quiet. */
+void resolvePageList().then(({ pages }) => {
+  for (const pg of pages) {
+    const a = el('a', 'mx-pagelink', pg.title);
+    a.href = '#/page/' + encodeURIComponent(pg.slug);
+    pagesSlot.appendChild(a);
+  }
+});
 
 /* ----------------- intro: the swarm paints the name --------------------- */
 

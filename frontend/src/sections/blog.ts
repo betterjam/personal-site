@@ -4,9 +4,12 @@
  * from fetchPosts() — the event-sourced API.
  *
  * States: loading (quiet skeleton lines), loaded (posts newest first:
- * date in the margin, linked title, deck, tags), error (falls back to
- * the section's content.json items under a one-line 'showing drafts —
- * API offline' note).
+ * date in the margin, linked title, deck, tags), and — when the API does
+ * not answer — the section's content.json items under the site's ONE
+ * asleep line (engine/asleep.ts: the infrastructure is asleep, this is the
+ * last published snapshot, here is the switch). There is never a bare
+ * error here: an API that is switched off is a normal state of this site,
+ * and the same words say so in the hub banner and the page reading room.
  *
  * READING VIEW: a hash router (#/blog/:slug) opens a full-overlay
  * reading room in the Sunburst finish — kicker BLOG, date, display-serif
@@ -28,6 +31,8 @@
 import '../styles/blog.css';
 import { gsap } from 'gsap';
 import { fetchPost, fetchPosts, inlineItems, type PostView } from '../engine/data';
+import { apiAsleep } from '../engine/apiState';
+import { asleepNote } from '../engine/asleep';
 import { closeLightbox, hydrateGalleryBlocks, isLightboxOpen } from '../engine/gallery';
 import { renderMarkdown } from '../engine/markdown';
 import { lockScroll, unlockScroll } from '../engine/overlayLock';
@@ -109,10 +114,11 @@ export const buildBlog: SectionBuilder = (host, section, _index, ctx) => {
 
   function renderEntries(
     specs: { title: string; deck: string; date?: string; tags?: string[]; href?: string }[],
-    note?: string,
+    note?: HTMLElement,
   ): void {
     clearEntries();
-    if (note) shell.bodyCol.insertBefore(el('p', 'bl-note', note), shell.entries);
+    for (const stale of shell.bodyCol.querySelectorAll('.bl-note')) stale.remove();
+    if (note) shell.bodyCol.insertBefore(note, shell.entries);
     const items: HTMLElement[] = [];
     for (const spec of specs) {
       const entry = buildEditorialEntry(spec);
@@ -135,20 +141,36 @@ export const buildBlog: SectionBuilder = (host, section, _index, ctx) => {
     );
   }
 
-  function renderDrafts(note: string): void {
+  function renderDrafts(note: HTMLElement): void {
     renderEntries(
       copyItems.map((it) => ({ title: it.title, deck: it.deck, date: it.date, tags: it.tags })),
       note,
     );
   }
 
+  /** A plain editorial note — the API answered, it simply had nothing. */
+  function plainNote(text: string): HTMLElement {
+    return el('p', 'bl-note', text);
+  }
+
+  /**
+   * The API did not answer. Posts are event-sourced and have no bundled
+   * floor, so the drafts in content.json stand in — under the site's one
+   * asleep line, so this note reads exactly like the hub banner's. If the
+   * API DID answer and merely failed, say that instead of blaming sleep.
+   */
+  function offlineNote(): HTMLElement {
+    if (!apiAsleep()) return plainNote('showing drafts — the posts service did not answer');
+    return asleepNote({ className: 'bl-note bl-note--asleep', lead: 'Showing drafts.' });
+  }
+
   void fetchPosts()
     .then((posts) => {
       if (posts.length) renderPosts(posts);
-      else renderDrafts('no posts published yet — showing drafts');
+      else renderDrafts(plainNote('no posts published yet — showing drafts'));
     })
     .catch(() => {
-      renderDrafts('showing drafts — API offline');
+      renderDrafts(offlineNote());
     });
 
   /* ------------------------------------------------ reading room DOM --- */
@@ -221,12 +243,30 @@ export const buildBlog: SectionBuilder = (host, section, _index, ctx) => {
     paras.appendChild(el('p', 'bl-room-status', 'replaying post events…'));
   }
 
+  /**
+   * A post body lives only in the event log, so there is no snapshot to
+   * fall back to here — but the reader still gets an explanation and a
+   * switch rather than a bare failure.
+   */
   function setRoomError(): void {
     postDate.textContent = '';
-    postTitle.textContent = 'Post unavailable';
+    postTitle.textContent = apiAsleep() ? 'Post asleep' : 'Post unavailable';
     standfirst.textContent = '';
     paras.textContent = '';
     postTags.textContent = '';
+    if (apiAsleep()) {
+      paras.appendChild(
+        asleepNote({
+          className: 'bl-room-status bl-room-status--asleep',
+          lead: 'This post is written in the event log, which needs the API awake.',
+          snapshot: false,
+        }),
+      );
+      paras.appendChild(
+        el('p', 'bl-room-status', 'esc or close returns to the blog'),
+      );
+      return;
+    }
     paras.appendChild(
       el('p', 'bl-room-status', 'could not load this post — esc or close returns to the blog'),
     );

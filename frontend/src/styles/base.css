@@ -250,3 +250,28 @@ html.mx-cur-vis .mx-cur-dot, html.mx-cur-vis .mx-cur-ring { opacity: 1; }
 }
 .mx-bandlink:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
 .mx-bandlink-arrow { display: inline-block; margin-left: .45em; text-decoration: none; }
+
+/* ---------- the asleep line, wherever it appears ----------
+   Built by asleepNote() (engine/asleep.ts) when the API is not
+   answering: the hub banner, the blog's offline note and the page
+   reading room all wear the same sentence and the same link to the
+   control plane. Finish-agnostic on purpose — colour comes from the
+   surrounding band's scoped tokens (--accent/--focus/currentColor), so
+   one rule serves every finish. Each host sets its own type scale and
+   spacing (and its own [hidden] display, since the hub's line toggles). */
+.asleep-say { display: inline; }
+.asleep-say + .asleep-say { margin-left: .4em; }
+.asleep-link {
+  margin-left: .5em;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  text-underline-offset: 3px;
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.asleep-link:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.asleep-link:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+.asleep-arrow { display: inline-block; margin-left: .35em; text-decoration: none; }
+@media (prefers-reduced-motion: reduce) {
+  .asleep-link { transition: none; }
+}

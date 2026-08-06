@@ -3,6 +3,15 @@
  * the top hero band of the long scroll, plus the under-construction banner
  * strip that rides above the masthead (status dot, credit line, commit
  * chip, deploy feed, collapsible roadmap).
+ *
+ * THE ASLEEP LINE. Visitors can stop this site's infrastructure from
+ * control.diegopalominos.dev — that is the point of the control plane, not
+ * an outage. So when the API stops answering the banner gains ONE calm
+ * line (engine/asleep.ts): the infrastructure is asleep, what you are
+ * reading is the last snapshot the repo published, and here is the switch.
+ * It appears and disappears live — engine/apiState.ts re-checks a sleeping
+ * API on a modest interval (and never while the tab is hidden), and the
+ * first successful read of any kind takes the line away without a reload.
  */
 import '../styles/hub.css';
 import { gsap } from 'gsap';
@@ -13,6 +22,8 @@ import {
   type RoadmapItem,
   type SiteContent,
 } from '../engine/data';
+import { apiAsleep, onApiState, watchApi } from '../engine/apiState';
+import { asleepNote } from '../engine/asleep';
 import { pad2 } from '../engine/themes';
 import type { SectionCtx, SectionInstance } from './types';
 
@@ -79,7 +90,13 @@ function itemTags(section: ContentSection): string[] {
 
 /* ------------------------------------------------------------- banner --- */
 
-function buildBanner(opts: HubOpts): HTMLElement {
+interface Banner {
+  el: HTMLElement;
+  /** Stop watching the API — the hub's destroy() calls it. */
+  destroy(): void;
+}
+
+function buildBanner(opts: HubOpts): Banner {
   const banner = el('div', 'hb-banner');
 
   /* (a) status dot + copy */
@@ -91,6 +108,23 @@ function buildBanner(opts: HubOpts): HTMLElement {
     el('span', 'hb-bn-copy', 'Under construction — new commits deploy straight here. Keep browsing.'),
   );
   banner.appendChild(status);
+
+  /* (a2) …and, only while the API is not answering, the asleep line.
+     Same words everywhere on the site: engine/asleep.ts owns them. */
+  const asleep = asleepNote({ className: 'hb-bn-asleep' });
+  asleep.hidden = !apiAsleep();
+  banner.appendChild(asleep);
+
+  function syncAsleep(): void {
+    const hide = !apiAsleep();
+    if (asleep.hidden === hide) return;
+    asleep.hidden = hide;
+    /* the banner just changed height — the deck re-measures its slots */
+    opts.onLayoutChange?.();
+  }
+  const unsubscribe = onApiState(syncAsleep);
+  /* polite recovery watch: idle while the API is live or the tab is away */
+  const unwatch = watchApi();
 
   /* (b) the credit, quiet and small */
   banner.appendChild(
@@ -162,7 +196,13 @@ function buildBanner(opts: HubOpts): HTMLElement {
   todos.addEventListener('toggle', () => opts.onLayoutChange?.());
   banner.appendChild(todos);
 
-  return banner;
+  return {
+    el: banner,
+    destroy() {
+      unsubscribe();
+      unwatch();
+    },
+  };
 }
 
 /* ---------------------------------------------------------------- hub --- */
@@ -185,7 +225,7 @@ export function buildHub(
 
   /* under-construction banner rides above the masthead */
   const banner = buildBanner(opts);
-  col.appendChild(banner);
+  col.appendChild(banner.el);
 
   const mast = el('div', 'hb-masthead');
   const name = el('h1', 'hb-name', profile.name);
@@ -215,7 +255,7 @@ export function buildHub(
   col.appendChild(mast);
 
   const grid = el('div', 'hb-grid');
-  const rise: HTMLElement[] = [banner, aside, coords];
+  const rise: HTMLElement[] = [banner.el, aside, coords];
   sections.forEach((s, i) => {
     const variant =
       s.id === 'guitars' ? 'hb-card--pine' : s.id === 'blog' ? 'hb-card--seafoam' : 'hb-card--bone';
@@ -266,6 +306,10 @@ export function buildHub(
         delay: 0.3,
         clearProps: 'opacity,visibility,transform',
       });
+    },
+    destroy() {
+      gsap.killTweensOf(rise);
+      banner.destroy();
     },
   };
 }

@@ -33,6 +33,18 @@
   .hb-bn-dot { animation: none; }
 }
 .hb-bn-copy { margin: 0; }
+/* the asleep line — only present while the API is not answering. Own row
+   (flex-basis 100%) so it never squeezes the status line, and a rule above
+   it so it reads as a second thought, not an alarm. */
+.hb-bn-asleep {
+  margin: 0; flex: 1 1 100%;
+  padding-top: .5rem;
+  border-top: 1px dashed color-mix(in srgb, var(--p-pine) 30%, var(--p-bone));
+  font-size: .68rem; line-height: 1.55;
+  color: color-mix(in srgb, var(--p-graphite) 72%, var(--p-bone));
+}
+.hb-bn-asleep[hidden] { display: none; }
+.hb-bn-asleep .asleep-link { color: var(--p-pine); }
 .hb-bn-credit {
   margin: 0; flex: 1 1 22rem; min-width: 16rem;
   font-size: .66rem; letter-spacing: .02em;

@@ -55,6 +55,17 @@
   text-wrap: balance;
 }
 
+/* the asleep line — present only when this page came from the bundled
+   snapshot because the API is not answering. Quiet, under the title, in
+   the same words the hub banner uses (engine/asleep.ts). */
+.pg-asleep {
+  margin: .9rem 0 0;
+  font-family: var(--font-mono); font-size: .74rem; line-height: 1.6;
+  color: var(--p-steel);
+}
+.pg-asleep[hidden] { display: none; }
+.pg-asleep .asleep-link { color: var(--p-seafoam-deep); }
+
 /* ---------------- the hero shot, straight under the masthead ----------------
    Full column width, the browser frame's own rounding and soft shadow
    (styles/shotFrame.css) — the page opens on the thing it is about. */

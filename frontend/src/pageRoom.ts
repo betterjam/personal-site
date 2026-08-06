@@ -14,8 +14,11 @@
  * so the deck can seat the scrollbar first).
  *
  * The body renders through the strict-subset markdown engine — built
- * DOM, textContent only, no HTML pass-through. fetchPage resolves null
- * on 404 → an honest 'page not found'. '!page[slug]', '!repo[owner/name]',
+ * DOM, textContent only, no HTML pass-through. lookupPage() reads the API
+ * first and the bundled snapshot when the API is unreachable, so a page
+ * stays readable with the infrastructure switched off; a snapshot page
+ * wears one quiet line saying so (engine/asleep.ts). Only the LIVE API's
+ * 404 produces the honest 'page not found'. '!page[slug]', '!repo[owner/name]',
  * '!image[ref|caption]' and '!gallery[…]' blocks in the body hydrate into
  * page cards, GitHub widgets and pictures afterwards (async for the two
  * that fetch, never blocking the open). A page that declares a `repo`
@@ -42,7 +45,8 @@
  */
 import './styles/pageRoom.css';
 import { gsap } from 'gsap';
-import { fetchPage, type PageView } from './engine/data';
+import { lookupPage, type PageOrigin, type PageView } from './engine/data';
+import { asleepNote } from './engine/asleep';
 import {
   closeLightbox,
   createFramedShot,
@@ -93,6 +97,11 @@ export function initPageRoom(reduced: () => boolean): PageRoomHandle {
   title.id = 'pg-title';
   room.setAttribute('aria-labelledby', title.id);
   head.appendChild(title);
+  /* the one line a snapshot page wears: where this copy came from, and
+     the switch that brings the live one back (engine/asleep.ts) */
+  const offline = asleepNote({ className: 'pg-asleep' });
+  offline.hidden = true;
+  head.appendChild(offline);
   page.appendChild(head);
 
   /* the hero: the page's own image, framed, straight under the masthead */
@@ -134,6 +143,7 @@ export function initPageRoom(reduced: () => boolean): PageRoomHandle {
   /** Empty every slot that is not the body — each non-page state clears
       the widget AND the pictures, so nothing survives a swap. */
   function clearFurniture(): void {
+    offline.hidden = true;
     repoWrap.textContent = '';
     repoWrap.hidden = true;
     heroWrap.textContent = '';
@@ -149,9 +159,10 @@ export function initPageRoom(reduced: () => boolean): PageRoomHandle {
     body.appendChild(el('p', 'pg-status', statusText));
   }
 
-  function renderPage(p: PageView): void {
+  function renderPage(p: PageView, origin: PageOrigin): void {
     title.textContent = p.title;
     clearFurniture();
+    offline.hidden = origin !== 'snapshot';
 
     /* ONE album for the page: the hero leads it, the gallery follows, so
        the lightbox's counter covers everything the page shows */
@@ -247,15 +258,27 @@ export function initPageRoom(reduced: () => boolean): PageRoomHandle {
     const seq = ++loadSeq;
     const swap = swapping;
     setStatus('Loading…', 'fetching the page…');
-    void fetchPage(slug)
-      .then((p) => {
+    void lookupPage(slug)
+      .then((found) => {
         if (seq !== loadSeq || openSlug !== slug) return;
-        if (p === null) {
+        if (found.state === 'absent') {
+          /* the LIVE API answered: nothing is published here */
           setStatus('Page not found', 'nothing published at this address — esc or close returns to the site');
           placeFocusAfterSwap();
           return;
         }
-        renderPage(p);
+        if (found.state === 'unknown') {
+          /* the API said nothing and the snapshot has no such page —
+             the only case where a slug is genuinely unreadable */
+          setStatus(
+            'Page unavailable',
+            'this page is not in the published snapshot and the API is not answering — esc or close returns to the site',
+          );
+          placeFocusAfterSwap();
+          return;
+        }
+        const p = found.page;
+        renderPage(p, found.origin);
         /* pictures resolve from the bundle — synchronous, no slot ever
            lingers empty (the two hydrators below DO fetch) */
         hydrateGalleryBlocks(body);

@@ -18,3 +18,16 @@ declare module 'virtual:asset-meta' {
   const meta: Record<string, [width: number, height: number]>;
   export default meta;
 }
+
+/**
+ * The BUILD-TIME CONTENT SNAPSHOT: every content/pages/*.md parsed with
+ * the server's own front-matter rules by the page-snapshot plugin in
+ * vite.config.ts, in filename order. It is the floor the site stands on
+ * when the API is switched off — src/engine/snapshot.ts lifts it into the
+ * API's PageView shape and src/engine/data.ts falls back to it whenever
+ * the API cannot be reached.
+ */
+declare module 'virtual:page-snapshot' {
+  const pages: import('./build/pageSeed').SnapshotPage[];
+  export default pages;
+}

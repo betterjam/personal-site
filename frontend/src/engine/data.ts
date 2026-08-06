@@ -2,8 +2,23 @@
  * Static content + theme data (bundled at build time) and the posts/meta
  * API client. All JSON lives outside the vite root, in the repo's
  * content/ and themes/ directories — one content.json, every finish.
+ *
+ * THE API IS OPTIONAL. Visitors can stop this site's infrastructure from
+ * control.diegopalominos.dev, so every read below is written for an API
+ * that may simply not be there. The rule, in one line:
+ *
+ *   the API answers → use it (a maintainer's live edits always win);
+ *   the API says no → obey it (an unpublished page really does vanish);
+ *   the API says nothing → the bundled snapshot answers instead.
+ *
+ * engine/apiState.ts draws the line between the last two — a JSON 404 is
+ * the API's own voice, an HTML error page or a dead connection is not —
+ * and engine/snapshot.ts is the floor. Nothing renders empty unless a slug
+ * is missing from BOTH.
  */
 import type { GalleryEntry } from './gallery';
+import { apiSignal, classify, reportApi } from './apiState';
+import { snapshotPage, snapshotPageList } from './snapshot';
 import contentJson from '../../../content/content.json';
 import roadmapJson from '../../../content/roadmap.json';
 import mixtapeJson from '../../../themes/mixtape.json';
@@ -44,8 +59,10 @@ export interface InlineItem {
 /**
  * A PAGE BLOCK — the item's copy lives on a published page instead of in
  * content.json: { "page": "<slug>", "tags"?: [...] }. The card resolves at
- * runtime through resolvePageCard(); an unpublished (or unknown) slug
- * resolves to null and the block renders NOTHING, everywhere.
+ * runtime through resolvePageCard(): the live API first, the bundled
+ * snapshot when the API is unreachable. It renders NOTHING only when the
+ * live API says the page is unpublished, or when no such slug exists in
+ * either place.
  */
 export interface PageBlock {
   page: string;
@@ -196,20 +213,53 @@ export interface PostView {
   updatedAt: string;
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
-  if (!res.ok) {
-    throw new Error(`GET ${url} failed: ${res.status} ${res.statusText}`);
+/* ------------------------------------------------------------ one read
+   Every GET goes through here: bounded by a timeout, classified once
+   (engine/apiState.ts), and reported to the state the asleep banner
+   watches. Callers never see a Response — only what it MEANT. */
+
+/** A read that reached the API, a read the API refused, or silence. */
+export type ApiRead<T> =
+  | { state: 'ok'; value: T }
+  | { state: 'absent' }
+  | { state: 'silent' };
+
+async function apiGet<T>(url: string): Promise<ApiRead<T>> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { accept: 'application/json' },
+      signal: apiSignal(),
+    });
+  } catch {
+    /* offline, refused, aborted by the timeout — the API said nothing */
+    reportApi(false);
+    return { state: 'silent' };
   }
-  return (await res.json()) as T;
+  const answer = classify(res); /* reports reachability for the banner */
+  if (answer !== 'ok') return { state: answer === 'absent' ? 'absent' : 'silent' };
+  try {
+    return { state: 'ok', value: (await res.json()) as T };
+  } catch {
+    /* a JSON content type with a body that is not JSON: not the API */
+    reportApi(false);
+    return { state: 'silent' };
+  }
 }
 
-/** Published posts, newest first. Throws on any non-2xx response. */
+/** The throwing form, for the reads whose callers already handle failure. */
+async function getJson<T>(url: string): Promise<T> {
+  const read = await apiGet<T>(url);
+  if (read.state !== 'ok') throw new Error(`GET ${url} did not answer (${read.state})`);
+  return read.value;
+}
+
+/** Published posts, newest first. Throws when the API does not answer. */
 export function fetchPosts(): Promise<PostView[]> {
   return getJson<PostView[]>('/api/posts');
 }
 
-/** A single published post by slug. Throws on any non-2xx response. */
+/** A single published post by slug. Throws when the API does not answer. */
 export function fetchPost(slug: string): Promise<PostView> {
   return getJson<PostView>(`/api/posts/${encodeURIComponent(slug)}`);
 }
@@ -255,31 +305,63 @@ export interface PageListItem {
   repo?: string;
 }
 
-/** Published pages, title asc. Throws on any non-2xx response. */
-export function fetchPages(): Promise<PageListItem[]> {
-  return getJson<PageListItem[]>('/api/pages');
+/** Where a page's copy came from — the API, or the bundled snapshot. */
+export type PageOrigin = 'api' | 'snapshot';
+
+/**
+ * The three answers a page lookup can give, and the ONLY three:
+ *   'page'    — here it is, and here is where it came from;
+ *   'absent'  — the live API answered that nothing is published at this
+ *               slug (unpublished, draft, or never existed). A real
+ *               editorial state: the page must disappear;
+ *   'unknown' — the API said nothing AND the snapshot has no such slug.
+ *               Nothing anywhere knows this page.
+ * There is deliberately no fourth state for "the API is down": that is
+ * not a page state, it is answered by the snapshot.
+ */
+export type PageLookup =
+  | { state: 'page'; page: PageView; origin: PageOrigin }
+  | { state: 'absent' }
+  | { state: 'unknown' };
+
+/**
+ * One page, API first. A 404 from the live API is obeyed — the snapshot
+ * does NOT resurrect a page its maintainer unpublished — while silence
+ * falls through to the snapshot, because an infrastructure switched off
+ * is not an editorial decision.
+ */
+export async function lookupPage(slug: string): Promise<PageLookup> {
+  const read = await apiGet<PageView>(`/api/pages/${encodeURIComponent(slug)}`);
+  if (read.state === 'ok') return { state: 'page', page: read.value, origin: 'api' };
+  if (read.state === 'absent') return { state: 'absent' };
+  const floor = snapshotPage(slug);
+  return floor ? { state: 'page', page: floor, origin: 'snapshot' } : { state: 'unknown' };
+}
+
+export interface PageListResult {
+  pages: PageListItem[];
+  origin: PageOrigin;
 }
 
 /**
- * A single published page by slug. Resolves null on 404 so the reading
- * room can say an honest 'page not found'; throws on other failures.
+ * The published-pages index. Only a real answer from the API replaces the
+ * snapshot: an empty list from a LIVE API is a true state (the footer just
+ * stays quiet), while silence keeps the bundled list. Never rejects.
  */
-export async function fetchPage(slug: string): Promise<PageView | null> {
-  const res = await fetch(`/api/pages/${encodeURIComponent(slug)}`, {
-    headers: { accept: 'application/json' },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`GET /api/pages/${slug} failed: ${res.status} ${res.statusText}`);
+export async function resolvePageList(): Promise<PageListResult> {
+  const read = await apiGet<PageListItem[]>('/api/pages');
+  if (read.state === 'ok' && Array.isArray(read.value)) {
+    return { pages: read.value, origin: 'api' };
   }
-  return (await res.json()) as PageView;
+  return { pages: snapshotPageList(), origin: 'snapshot' };
 }
 
 /* -------------------------------------------------------------- page cards
    The card model every page block renders from — section rows AND the
    markdown '!page[slug]' blocks resolve through the SAME helper, so an
    unpublished page disappears from both at once (the public endpoint
-   404s → null → the block renders nothing). */
+   404s → 'hidden' → the block renders nothing) and a switched-off API
+   leaves both reading from the same bundled snapshot. */
 
 export interface PageCard {
   slug: string;
@@ -346,26 +428,42 @@ export function pageToCard(page: PageView | PageListItem): PageCard {
   };
 }
 
-/** slug → in-flight/settled resolution; failures evict so a retry can run. */
-const cardCache = new Map<string, Promise<PageCard | null>>();
+/**
+ * What a page block resolved to. 'hidden' is the ONLY instruction to
+ * render nothing, and it is given for exactly two reasons: the live API
+ * said the page is not published, or nothing — API or snapshot — has ever
+ * heard of the slug. An API that is merely unreachable never produces it.
+ */
+export type CardResolution =
+  | { state: 'card'; card: PageCard; origin: PageOrigin }
+  | { state: 'hidden' };
+
+/** slug → in-flight/settled resolution; see below for what evicts. */
+const cardCache = new Map<string, Promise<CardResolution>>();
 
 /**
  * Resolve a page block's card. Cached per slug (a section row and three
- * markdown embeds of the same slug share ONE fetch), null for anything
- * the public API will not serve — unknown slug, draft, unpublished.
+ * markdown embeds of the same slug share ONE fetch).
+ *
+ * A card served from the SNAPSHOT is not cached past its settlement: the
+ * API may wake up a moment later, and the next block to render this slug
+ * should get the live copy rather than inherit a stale floor.
  */
-export function resolvePageCard(slug: string): Promise<PageCard | null> {
+export function resolvePageCardEntry(slug: string): Promise<CardResolution> {
   const hit = cardCache.get(slug);
   if (hit) return hit;
-  const pending = fetchPage(slug)
-    .then((page) => (page === null ? null : pageToCard(page)))
-    .catch(() => {
-      /* transient (offline, 5xx) — forget it so a later render retries */
-      cardCache.delete(slug);
-      return null;
-    });
+  const pending = lookupPage(slug).then((found): CardResolution => {
+    if (found.state !== 'page') return { state: 'hidden' };
+    if (found.origin === 'snapshot') cardCache.delete(slug); /* retry later */
+    return { state: 'card', card: pageToCard(found.page), origin: found.origin };
+  });
   cardCache.set(slug, pending);
   return pending;
+}
+
+/** The compact form: the card, or null when there is nothing to draw. */
+export function resolvePageCard(slug: string): Promise<PageCard | null> {
+  return resolvePageCardEntry(slug).then((res) => (res.state === 'card' ? res.card : null));
 }
 
 /* ------------------------------------------------------------ repositories
@@ -490,11 +588,13 @@ function parseRepo(raw: unknown, ref: string): RepoInfo {
 }
 
 async function fetchRepo(ref: string): Promise<RepoInfo> {
-  const res = await fetch('/api/github/' + ref, { headers: { accept: 'application/json' } });
+  const read = await apiGet<unknown>('/api/github/' + ref);
   /* the contract says 200 always — anything else means the endpoint is not
-     there (yet) or the server is unwell: unavailable, not an exception */
-  if (!res.ok) return unavailable(ref, repoUrl(ref), 'error');
-  return parseRepo(await res.json(), ref);
+     there (yet) or the server is unwell: unavailable, not an exception.
+     The widget has an honest state for that, so there is nothing to fall
+     back to here; the read still reports reachability for the banner. */
+  if (read.state !== 'ok') return unavailable(ref, repoUrl(ref), 'error');
+  return parseRepo(read.value, ref);
 }
 
 /** 'owner/name' lowercased → in-flight/settled resolution. */
@@ -537,15 +637,15 @@ export interface MetaInfo {
 
 /**
  * /api/meta may 404 while the endpoint ships — this resolves null on ANY
- * failure (network error, non-2xx, malformed body) and never throws.
+ * failure (network error, non-2xx, malformed body) and never throws. It
+ * is also the first read of the page, so it is what usually tells the
+ * banner whether the infrastructure is awake.
  */
 export async function fetchMeta(): Promise<MetaInfo | null> {
   try {
-    const res = await fetch('/api/meta', {
-      headers: { accept: 'application/json' },
-    });
-    if (!res.ok) return null;
-    const raw: unknown = await res.json();
+    const read = await apiGet<unknown>('/api/meta');
+    if (read.state !== 'ok') return null;
+    const raw: unknown = read.value;
     if (typeof raw !== 'object' || raw === null) return null;
     const obj = raw as Record<string, unknown>;
     if (typeof obj.commit !== 'string' || typeof obj.builtAt !== 'string') {
