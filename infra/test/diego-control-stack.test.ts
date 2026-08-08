@@ -1,11 +1,15 @@
 import { App, Stack, StackProps, Duration } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
+import * as pipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { UNCONFIGURED_ACCOUNT_ERROR } from '../src/constructs/fenced-stack';
+import { MUTATING_ROUTES } from '../src/control/handler';
 import { DiegoControlStack, DiegoControlStackProps } from '../src/diego-control-stack';
 
 // A documentation-placeholder account: the real one is never in source — it
@@ -21,11 +25,14 @@ const PROTECTED_PREFIXES = ['acme-prod', 'acme-modular'];
 const REGION = 'us-east-1';
 const ENV = { account: ACCOUNT, region: REGION };
 const HOSTED_ZONE_ID = 'Z0123456789ABCDEFGHIJ';
+/** This stack's own pipeline — the entire allow-list the panel may read. */
+const SITE_PIPELINE_NAME = 'eleva-diego-site-prod';
 
 /**
  * A stand-in for the site stack: the same construct SHAPE that matters to the
  * control plane — a `blog` scope holding the Fargate service and its log
- * group, a `database` scope holding the Postgres instance — so the panel keys
+ * group, a `database` scope holding the Postgres instance, and the
+ * `eleva-<app>-<env>` pipeline the panel reads — so the panel keys
  * (`blog`, `database`) come out of the parent construct ids exactly as they do
  * in production. Using a double keeps these tests independent of the site
  * stack's own evolution.
@@ -34,6 +41,7 @@ class SiteDouble extends Stack {
   public readonly cluster: ecs.Cluster;
   public readonly service: ecs.FargateService;
   public readonly database: rds.DatabaseInstance;
+  public readonly pipeline: codepipeline.Pipeline;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -72,6 +80,33 @@ class SiteDouble extends Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       healthCheckGracePeriod: Duration.seconds(60),
     });
+
+    // The deploy pipeline, in its own scope like the real site stack. Its
+    // shape is irrelevant to the control plane — only its name and ARN travel
+    // across the seam.
+    const pipelineScope = new Construct(this, 'pipeline');
+    const sourceBucket = new s3.Bucket(pipelineScope, 'SourceBucket');
+    const sourceOutput = new codepipeline.Artifact('Source');
+    this.pipeline = new codepipeline.Pipeline(pipelineScope, 'Pipeline', {
+      pipelineName: SITE_PIPELINE_NAME,
+      crossAccountKeys: false,
+      stages: [
+        {
+          stageName: 'Source',
+          actions: [new pipelineActions.S3SourceAction({
+            actionName: 'Source',
+            bucket: sourceBucket,
+            bucketKey: 'source.zip',
+            trigger: pipelineActions.S3Trigger.POLL,
+            output: sourceOutput,
+          })],
+        },
+        {
+          stageName: 'Deploy',
+          actions: [new pipelineActions.ManualApprovalAction({ actionName: 'Approve' })],
+        },
+      ],
+    });
   }
 }
 
@@ -100,6 +135,7 @@ function build(options: {
     service: site.service,
     cluster: site.cluster,
     dbInstance: site.database,
+    pipeline: site.pipeline,
     hostedZoneId: HOSTED_ZONE_ID,
     ...options.props,
   });
@@ -110,6 +146,7 @@ interface PolicyStatementJson {
   Sid?: string;
   Effect?: string;
   Action?: string | string[];
+  NotAction?: string | string[];
   Resource?: unknown;
   NotResource?: unknown;
   Condition?: Record<string, unknown>;
@@ -143,11 +180,98 @@ function statementBySid(template: Template, sid: string): PolicyStatementJson {
   return hit!;
 }
 
+/**
+ * The control Lambda, BY FUNCTION NAME. The template holds other functions
+ * (CDK's log-retention and certificate custom resources), so "the first
+ * AWS::Lambda::Function" is not good enough for an assertion about its
+ * environment.
+ */
+function controlFunction(template: Template): Record<string, any> {
+  const found = Object.values(template.findResources('AWS::Lambda::Function'))
+    .find((fn) => fn.Properties?.FunctionName === 'diego-control-api');
+  expect(found).toBeDefined();
+  return found!;
+}
+
+/** The control Lambda's environment variables. */
+function controlEnv(template: Template): Record<string, any> {
+  return controlFunction(template).Properties.Environment.Variables;
+}
+
 function resourceOfType(template: Template, type: string): Record<string, any> {
   const resources = template.findResources(type);
   const ids = Object.keys(resources);
   expect(ids.length).toBeGreaterThan(0);
   return resources[ids[0]];
+}
+
+/**
+ * The permissions boundary, BY NAME.
+ *
+ * Not "the first managed policy in the template": CDK spills an identity
+ * policy that outgrows the inline limit into an extra managed policy of its
+ * own, and a boundary assertion must never silently end up reading that.
+ */
+function boundaryPolicy(template: Template): Record<string, any> {
+  /*
+   * Found by the ROLE that carries it, not by a physical name: the boundary
+   * is deliberately unnamed so CloudFormation can replace it (a fixed name
+   * makes create-before-delete collide with the live policy and deadlocks
+   * every future deploy).
+   */
+  const role = Object.values(template.findResources('AWS::IAM::Role'))
+    .find((r) => r.Properties?.RoleName === 'diego-control-api-role');
+  expect(role).toBeDefined();
+  const boundaryRef = role!.Properties.PermissionsBoundary?.Ref;
+  expect(boundaryRef).toBeDefined();
+  const found = template.toJSON().Resources[boundaryRef];
+  expect(found).toBeDefined();
+  expect(found.Type).toBe('AWS::IAM::ManagedPolicy');
+  return found;
+}
+
+/** Sids of the DENY statements on the permissions boundary. */
+function boundaryDenySids(template: Template): string[] {
+  return (boundaryPolicy(template).Properties.PolicyDocument.Statement as PolicyStatementJson[])
+    .filter((s) => s.Effect === 'Deny')
+    .map((s) => String(s.Sid));
+}
+
+/**
+ * IAM caps a managed policy at 6,144 characters, whitespace excluded. The
+ * boundary is this app's largest document, and CloudFormation intrinsics in
+ * the synthesized JSON stand in for ARNs that are longer once resolved, so
+ * this counts the template form with each unresolved reference charged as a
+ * representative 90-character ARN.
+ */
+const MANAGED_POLICY_LIMIT = 6144;
+/** Pseudo-parameters resolve to short, known strings; count them as such. */
+const PSEUDO_PARAMETERS: Record<string, string> = {
+  'AWS::Partition': 'aws',
+  'AWS::Region': REGION,
+  'AWS::AccountId': ACCOUNT,
+  'AWS::URLSuffix': 'amazonaws.com',
+};
+function policyDocumentSize(document: unknown): number {
+  const render = (node: any): any => {
+    if (Array.isArray(node)) return node.map(render);
+    if (node && typeof node === 'object') {
+      const keys = Object.keys(node);
+      if (keys.length === 1 && keys[0] === 'Ref' && PSEUDO_PARAMETERS[node.Ref] !== undefined) {
+        return PSEUDO_PARAMETERS[node.Ref];
+      }
+      if (keys.length === 1 && ['Ref', 'Fn::ImportValue', 'Fn::GetAtt', 'Fn::Sub'].includes(keys[0])) {
+        return 'x'.repeat(90);
+      }
+      if (keys.length === 1 && keys[0] === 'Fn::Join') {
+        const [separator, parts] = node['Fn::Join'];
+        return (render(parts) as unknown[]).join(separator);
+      }
+      return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, render(v)]));
+    }
+    return node;
+  };
+  return JSON.stringify(render(document)).replace(/\s/g, '').length;
 }
 
 let base: Built;
@@ -381,6 +505,255 @@ describe('G7 — activity log', () => {
   });
 });
 
+describe('G8 — anonymous mutation is opt-in', () => {
+  test('ALLOW_ANON defaults to false: an unqualified deploy is read-only for strangers', () => {
+    expect(controlEnv(base.template).ALLOW_ANON).toBe('false');
+  });
+
+  test('-c allowAnon=true opts a deployment in, -c allowAnon=false says no explicitly', () => {
+    expect(controlEnv(build({ context: { allowAnon: true } }).template).ALLOW_ANON).toBe('true');
+    expect(controlEnv(build({ context: { allowAnon: 'true' } }).template).ALLOW_ANON).toBe('true');
+    expect(controlEnv(build({ context: { allowAnon: false } }).template).ALLOW_ANON).toBe('false');
+    expect(controlEnv(build({ context: { allowAnon: 'false' } }).template).ALLOW_ANON).toBe('false');
+  });
+
+  test('a value that is neither true nor false fails the synth instead of being guessed', () => {
+    // `-c allowAnon=yes` quietly meaning "no" would lock a deployment out;
+    // the reverse coercion would open one up. Neither is discoverable late.
+    for (const allowAnon of ['yes', 'no', '1', 'TRUE']) {
+      expect(() => build({ context: { allowAnon } })).toThrow(/allowAnon must be true or false/);
+    }
+  });
+
+  test('the manifest the panel reads carries the same flag as the gate enforces', () => {
+    for (const allowAnon of [true, false]) {
+      const vars = controlEnv(build({ context: { allowAnon } }).template);
+      const manifest = JSON.stringify(vars.MANIFEST);
+      expect(manifest).toContain(`\\"allowAnon\\":${allowAnon}`);
+      // The pre-flag alias always agrees: a manifest advertising
+      // `publicDemo: true` to a panel the API would then 401 is worse than no
+      // flag at all.
+      expect(manifest).toContain(`\\"publicDemo\\":${allowAnon}`);
+      expect(vars.ALLOW_ANON).toBe(String(allowAnon));
+    }
+  });
+
+  test('the bearer token is a generated Secrets Manager secret under this stack\'s own prefix', () => {
+    // Same mechanism as the site stack's maintainer ADMIN_TOKEN, and a
+    // separate secret: the two planes are different trust boundaries. The
+    // `diego-control-` prefix is also the only Secrets Manager path F3's
+    // DenySecretsOutsideOwnPaths leaves open to this role.
+    base.template.hasResourceProperties('AWS::SecretsManager::Secret', Match.objectLike({
+      Name: 'diego-control-admin-token',
+      GenerateSecretString: Match.objectLike({ ExcludePunctuation: true, PasswordLength: 48 }),
+    }));
+    base.template.resourceCountIs('AWS::SecretsManager::Secret', 1);
+  });
+
+  test('the secret exists in both modes, so the flag can be flipped without provisioning one', () => {
+    for (const allowAnon of [true, false]) {
+      build({ context: { allowAnon } }).template
+        .hasResourceProperties('AWS::SecretsManager::Secret', Match.objectLike({
+          Name: 'diego-control-admin-token',
+        }));
+    }
+  });
+
+  test('the token reaches the Lambda as a dynamic reference — no secret material in the template', () => {
+    const rendered = JSON.stringify(controlEnv(base.template).ADMIN_TOKEN);
+    expect(rendered).toContain('{{resolve:secretsmanager:');
+    expect(rendered).toContain(':SecretString:::}}');
+    // Nothing that looks like a literal 48-character generated token.
+    expect(rendered).not.toMatch(/[A-Za-z0-9]{48}/);
+  });
+
+  test('the role needs no secretsmanager permission: CloudFormation resolves the token, not the Lambda', () => {
+    const grants = policyStatements(base.template)
+      .filter((statement) => statement.Effect !== 'Deny')
+      .flatMap((statement) => asArray(statement.Action))
+      .filter((action): action is string => typeof action === 'string');
+    expect(grants.filter((action) => action.startsWith('secretsmanager:'))).toEqual([]);
+  });
+
+  test('the routes the stage throttles are exactly the routes the handler gates', () => {
+    // One definition, imported by both. A fifth mutating route cannot end up
+    // rate-limited but ungated, or gated but unthrottled.
+    const stage = resourceOfType(base.template, 'AWS::ApiGatewayV2::Stage');
+    expect(Object.keys(stage.Properties.RouteSettings).sort()).toEqual([...MUTATING_ROUTES].sort());
+  });
+
+  test('the API description tells the truth about which mode it is in', () => {
+    const readOnly = resourceOfType(base.template, 'AWS::ApiGatewayV2::Api');
+    expect(readOnly.Properties.Description).toContain('token-gated mutations');
+    const open = resourceOfType(build({ context: { allowAnon: true } }).template, 'AWS::ApiGatewayV2::Api');
+    expect(open.Properties.Description).toContain('anonymous mutation by design');
+  });
+});
+
+describe('P1/P2/P3 — the read-only, allow-listed pipeline surface', () => {
+  /** Every codepipeline action granted (not denied) anywhere in the template. */
+  const allowedPipelineActions = (template: Template): PolicyStatementJson[] =>
+    policyStatements(template).filter((statement) => statement.Effect !== 'Deny'
+      && asArray(statement.Action).some((a) => typeof a === 'string' && a.startsWith('codepipeline:')));
+
+  test('the allow-list reaches the Lambda as pipeline NAMES, wired from the site stack', () => {
+    const fns = Object.values(base.template.findResources('AWS::Lambda::Function'));
+    const control = fns.find((f) => f.Properties?.FunctionName === 'diego-control-api')!;
+    const pipelines = control.Properties.Environment.Variables.PIPELINES;
+    // Not a literal: the name crosses the stack seam from the pipeline
+    // construct, so it cannot drift from the ARN in the IAM statement.
+    expect(JSON.stringify(pipelines)).toContain('Fn::ImportValue');
+  });
+
+  test('an imported pipeline lands in the environment as its plain name', () => {
+    const app = new App({ context: { expectedAccount: ACCOUNT } });
+    const site = new SiteDouble(app, 'DiegoSiteStack', { env: ENV });
+    const control = new DiegoControlStack(app, 'DiegoControlStack', {
+      env: ENV,
+      service: site.service,
+      cluster: site.cluster,
+      dbInstance: site.database,
+      pipeline: codepipeline.Pipeline.fromPipelineArn(
+        site,
+        'ImportedPipeline',
+        `arn:aws:codepipeline:${REGION}:${ACCOUNT}:${SITE_PIPELINE_NAME}`,
+      ),
+    });
+    const template = Template.fromStack(control);
+
+    template.hasResourceProperties('AWS::Lambda::Function', Match.objectLike({
+      FunctionName: 'diego-control-api',
+      Environment: Match.objectLike({ Variables: Match.objectLike({ PIPELINES: SITE_PIPELINE_NAME }) }),
+    }));
+    const statement = statementBySid(template, 'ReadStateOfAllowListedPipelinesOnly');
+    expect(asArray(statement.Resource)).toEqual([`arn:aws:codepipeline:${REGION}:${ACCOUNT}:${SITE_PIPELINE_NAME}`]);
+  });
+
+  test('read access is pinned to the allow-listed pipeline ARN, with exactly two actions', () => {
+    const statement = statementBySid(base.template, 'ReadStateOfAllowListedPipelinesOnly');
+    expect(statement.Effect).toBe('Allow');
+    expect(asArray(statement.Action).sort()).toEqual([
+      'codepipeline:GetPipelineState',
+      'codepipeline:ListPipelineExecutions',
+    ]);
+    const resources = asArray(statement.Resource);
+    expect(resources).toHaveLength(1);
+    expect(resources[0]).not.toBe('*');
+    // Cross-stack: the ARN comes from the site stack's pipeline construct, so
+    // it can never drift from the name in PIPELINES.
+    expect(JSON.stringify(resources[0])).toContain('Fn::ImportValue');
+  });
+
+  test('no codepipeline action is ever granted on Resource "*"', () => {
+    const offenders = allowedPipelineActions(base.template)
+      .filter((statement) => asArray(statement.Resource).includes('*') || statement.Resource === '*');
+    expect(offenders).toEqual([]);
+  });
+
+  test('nothing grants listing, running, approving or editing a pipeline', () => {
+    const granted = allowedPipelineActions(base.template)
+      .flatMap((statement) => asArray(statement.Action))
+      .filter((a): a is string => typeof a === 'string');
+    for (const forbidden of [
+      'codepipeline:ListPipelines',
+      'codepipeline:GetPipeline',
+      'codepipeline:StartPipelineExecution',
+      'codepipeline:PutApprovalResult',
+      'codepipeline:StopPipelineExecution',
+      'codepipeline:UpdatePipeline',
+      'codepipeline:*',
+    ]) {
+      expect(granted).not.toContain(forbidden);
+    }
+    // sns:Subscribe would let a stranger sign an address up for mail.
+    const allActions = policyStatements(base.template)
+      .filter((s) => s.Effect !== 'Deny')
+      .flatMap((s) => asArray(s.Action));
+    expect(allActions).not.toContain('sns:Subscribe');
+  });
+
+  test('on the allow-listed pipeline, everything but the two reads is denied', () => {
+    const statement = statementBySid(base.template, 'DenyEverythingButStateReadsOnAllowListedPipelines');
+    expect(statement.Effect).toBe('Deny');
+    /*
+     * NotAction: running, approving, stopping, editing and every future
+     * CodePipeline API are denied on this pipeline, without listing them.
+     * Pinned to the pipeline ARNs, so it never judges an ECS or RDS request.
+     */
+    expect(statement.NotAction).toEqual([
+      'codepipeline:GetPipelineState',
+      'codepipeline:ListPipelineExecutions',
+    ]);
+    expect(statement.Action).toBeUndefined();
+    expect(asArray(statement.Resource)).not.toContain('*');
+    expect(JSON.stringify(statement.Resource)).toContain('Fn::ImportValue');
+  });
+
+  test('anything outside the allow-list is denied by NotResource, ListPipelines included', () => {
+    const statement = statementBySid(base.template, 'DenyCodePipelineOutsideTheAllowList');
+    expect(statement.Effect).toBe('Deny');
+    expect(asArray(statement.Action)).toEqual(['codepipeline:*']);
+    expect(statement.NotResource).toBeDefined();
+    expect(statement.Resource).toBeUndefined();
+    expect(JSON.stringify(statement.NotResource)).toContain('Fn::ImportValue');
+  });
+
+  test('the pipeline denies live on the permissions boundary too, not just the role', () => {
+    expect(boundaryDenySids(base.template)).toEqual(expect.arrayContaining([
+      'DenyEverythingButStateReadsOnAllowListedPipelines',
+      'DenyCodePipelineOutsideTheAllowList',
+    ]));
+  });
+
+  test('a protected production name stays denied even if the allow-list is widened', () => {
+    // The NotResource deny fences off every pipeline but the allow-listed one;
+    // this covers the other direction — someone adding a production pipeline
+    // TO the allow-list. Deny by name still wins.
+    const statement = statementBySid(base.template, 'DenyAnythingNamedProtectedProduction');
+    const rendered = JSON.stringify(statement.Resource);
+    for (const prefix of PROTECTED_PREFIXES) expect(rendered).toContain(`codepipeline:*:*:*${prefix}*`);
+    expect(boundaryDenySids(base.template)).toContain('DenyAnythingNamedProtectedProduction');
+  });
+
+  test('the boundary still fits inside the IAM managed-policy limit', () => {
+    /*
+     * The pipeline statements landed in the app's largest policy document.
+     * IAM rejects a managed policy over 6,144 characters at deploy time, with
+     * no synth-time warning, so the size is asserted here — and the boundary
+     * grows with `protectedStackPrefixes`, which is per-invocation context.
+     */
+    const size = policyDocumentSize(boundaryPolicy(base.template).Properties.PolicyDocument);
+    expect(size).toBeLessThan(MANAGED_POLICY_LIMIT);
+    // Real deployments pass two prefixes; keep room for a third.
+    const withThree = build({ context: { protectedStackPrefixes: 'acme-prod,acme-modular,acme-legacy' } });
+    expect(policyDocumentSize(boundaryPolicy(withThree.template).Properties.PolicyDocument))
+      .toBeLessThan(MANAGED_POLICY_LIMIT);
+  });
+
+  test('GET /pipelines is routed and no pipeline mutation route exists', () => {
+    const routes = Object.values(base.template.findResources('AWS::ApiGatewayV2::Route'))
+      .map((r) => r.Properties.RouteKey as string);
+    expect(routes).toContain('GET /pipelines');
+    for (const key of ['POST /pipelines/run', 'POST /pipelines/approve', 'POST /pipelines/subscribe']) {
+      expect(routes).not.toContain(key);
+    }
+    // They still reach the handler (which refuses honestly) via the catch-all.
+    expect(routes).toContain('ANY /{proxy+}');
+  });
+
+  test('with no pipeline passed the role gets no codepipeline access at all', () => {
+    const { template } = build({ props: { pipeline: undefined } });
+    expect(allowedPipelineActions(template)).toEqual([]);
+    template.hasResourceProperties('AWS::Lambda::Function', Match.objectLike({
+      FunctionName: 'diego-control-api',
+      Environment: Match.objectLike({ Variables: Match.objectLike({ PIPELINES: '' }) }),
+    }));
+    const statement = statementBySid(template, 'DenyCodePipelineEntirely');
+    expect(asArray(statement.Action)).toEqual(['codepipeline:*']);
+    expect(asArray(statement.Resource)).toEqual(['*']);
+  });
+});
+
 describe('F1 — account guard', () => {
   test('a wrong account fails synth loudly, naming both accounts', () => {
     expect(() => build({ env: { account: '111111111111', region: REGION } }))
@@ -424,29 +797,27 @@ describe('F2 — permissions boundary', () => {
     expect(boundaryRef).toContain('ControlBoundary');
   });
 
-  test('the boundary is a managed policy named diego-control-boundary', () => {
-    base.template.hasResourceProperties('AWS::IAM::ManagedPolicy', Match.objectLike({
-      ManagedPolicyName: 'diego-control-boundary',
-    }));
+  test('the boundary is an UNNAMED managed policy attached to the control role', () => {
+    // Unnamed on purpose — see boundaryPolicy(). A fixed ManagedPolicyName
+    // deadlocks replacement: "A policy called diego-control-boundary already
+    // exists" on every subsequent deploy.
+    const boundary = boundaryPolicy(base.template);
+    expect(boundary.Properties.ManagedPolicyName).toBeUndefined();
+    expect(boundary.Properties.PolicyDocument.Statement.length).toBeGreaterThan(0);
   });
 
   test('the boundary allows nothing beyond this stack (implicit deny is the wall)', () => {
-    const boundary = resourceOfType(base.template, 'AWS::IAM::ManagedPolicy');
+    const boundary = boundaryPolicy(base.template);
     const allowed = (boundary.Properties.PolicyDocument.Statement as PolicyStatementJson[])
       .filter((s) => s.Effect !== 'Deny')
       .flatMap((s) => asArray(s.Action));
     const services = new Set(allowed.map((a) => String(a).split(':')[0]));
-    expect([...services].sort()).toEqual(['dynamodb', 'ecs', 'iam', 'logs', 'rds', 'scheduler']);
+    expect([...services].sort()).toEqual(['codepipeline', 'dynamodb', 'ecs', 'iam', 'logs', 'rds', 'scheduler']);
   });
 });
 
 describe('F3 — explicit denies (deny wins over allow)', () => {
-  const boundarySids = (template: Template): string[] => {
-    const boundary = resourceOfType(template, 'AWS::IAM::ManagedPolicy');
-    return (boundary.Properties.PolicyDocument.Statement as PolicyStatementJson[])
-      .filter((s) => s.Effect === 'Deny')
-      .map((s) => String(s.Sid));
-  };
+  const boundarySids = boundaryDenySids;
 
   test('the boundary denies the configured protected stacks by ARN pattern', () => {
     const statement = statementBySid(base.template, 'DenyAnythingNamedProtectedProduction');
@@ -549,13 +920,13 @@ describe('F5 — name prefixes', () => {
       'AWS::Lambda::Function': ['FunctionName'],
       'AWS::DynamoDB::Table': ['TableName'],
       'AWS::IAM::Role': ['RoleName'],
-      'AWS::IAM::ManagedPolicy': ['ManagedPolicyName'],
       'AWS::Events::Rule': ['Name'],
       'AWS::Scheduler::ScheduleGroup': ['Name'],
       'AWS::ApiGatewayV2::Api': ['Name'],
       'AWS::S3::Bucket': ['BucketName'],
       'AWS::SNS::Topic': ['TopicName'],
       'AWS::CloudWatch::Alarm': ['AlarmName'],
+      'AWS::SecretsManager::Secret': ['Name'],
     };
     const names: string[] = [];
     for (const resource of Object.values(resources)) {

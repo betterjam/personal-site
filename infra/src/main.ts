@@ -51,6 +51,7 @@ const controlProps: DiegoControlStackProps = {
   cluster: site.cluster,
   service: site.service,
   database: site.database,
+  pipeline: site.pipeline,
   siteDomainName: site.domainName,
   siteUrl: site.siteUrl,
   controlDomainName: app.node.tryGetContext('controlDomainName') ?? DEFAULT_CONTROL_DOMAIN,

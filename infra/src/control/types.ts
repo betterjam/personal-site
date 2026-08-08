@@ -45,7 +45,19 @@ export interface Manifest {
   readonly env: string;
   readonly app: string;
   readonly resources: ManifestResource[];
-  /** Public playground flag: the panel may show the "anyone can flip it" hint. */
+  /**
+   * G8 — may an ANONYMOUS (token-less) caller mutate?
+   *
+   * The authority for both the panel's mode and the handler's own gate.
+   * `false` (the default) means the panel renders read-only until someone
+   * supplies a token; `true` means this deployment deliberately lets visitors
+   * flip the lights, which is the public playground's entire point.
+   */
+  readonly allowAnon?: boolean;
+  /**
+   * Alias of `allowAnon`, kept for panels built before the flag existed. It
+   * always carries the same value — `allowAnon` is the authority.
+   */
   readonly publicDemo?: boolean;
   readonly siteUrl?: string;
 }
@@ -119,6 +131,94 @@ export interface SchedulePort {
   remove(name: string): Promise<void>;
 }
 
+/**
+ * One action inside a pipeline stage, reduced to what a PUBLIC page may show.
+ *
+ * Note what is missing: the approval `token`. `GetPipelineState` returns one
+ * for a waiting manual-approval action, and it is a bearer credential — it is
+ * dropped in `aws.ts` and has no field to live in here, so it can never reach
+ * a response by accident (see `pipelineView` in `handler.ts`).
+ */
+export interface PipelineActionState {
+  readonly name: string;
+  readonly status?: string;
+  /** ISO-8601 of the last status change — the newest one becomes `updated`. */
+  readonly lastStatusChange?: string;
+  /** `errorDetails.message` of a failed action (or its summary). */
+  readonly errorMessage?: string;
+}
+
+/** One stage of a pipeline, with the actions the state call reported. */
+export interface PipelineStageState {
+  readonly name: string;
+  readonly status?: string;
+  readonly actions: PipelineActionState[];
+}
+
+/** `GetPipelineState` for ONE named pipeline, normalized. */
+export interface PipelineStateSnapshot {
+  /** Echoed back by the API; re-checked against the allow-list before use. */
+  readonly name: string;
+  readonly stages: PipelineStageState[];
+}
+
+/** One past run, from `ListPipelineExecutions`. */
+export interface PipelineExecutionSummary {
+  readonly id?: string;
+  readonly status?: string;
+  /** ISO-8601 start time — the panel renders it as "x ago". */
+  readonly startTime?: string;
+  /** Short status summary (e.g. why it stopped). Never the source revision. */
+  readonly summary?: string;
+}
+
+/**
+ * The only two CodePipeline calls this control plane can make, both taking a
+ * pipeline NAME the caller already had.
+ *
+ * There is deliberately no `list()`: `codepipeline:ListPipelines` would
+ * enumerate every pipeline in an account that also runs production, and the
+ * handler could then publish their names and states on an anonymous page. The
+ * allow-list is passed in through the environment instead, the IAM policy is
+ * scoped to those ARNs, and the boundary denies `ListPipelines` outright — the
+ * missing port is the fourth wall, in the type system.
+ */
+export interface PipelinePort {
+  state(name: string): Promise<PipelineStateSnapshot | undefined>;
+  executions(name: string, limit: number): Promise<PipelineExecutionSummary[]>;
+}
+
+/** One stage as the panel renders it: `{{s.name}} · {{s.status}}`. */
+export interface PipelineStageView {
+  readonly name: string;
+  readonly status: string;
+}
+
+/** One history chip in the panel. */
+export interface PipelineRunView {
+  readonly status: string;
+  /** ISO-8601. */
+  readonly when: string;
+  /** Short execution id, shown in the chip's hover text. */
+  readonly id?: string;
+  readonly summary?: string;
+}
+
+/**
+ * One pipeline as `GET /pipelines` returns it.
+ *
+ * `pendingApproval` and `logUrl` are absent by design — see `pipelineView` in
+ * `handler.ts` for why.
+ */
+export interface PipelineView {
+  readonly name: string;
+  /** ISO-8601 of the most recent action status change. */
+  readonly updated?: string;
+  readonly stages: PipelineStageView[];
+  readonly failure?: string;
+  readonly history: PipelineRunView[];
+}
+
 /** One line of the public "who flipped the lights" feed. */
 export interface ActivityEntry {
   /** ISO-8601 timestamp. */
@@ -154,10 +254,31 @@ export interface ControlEnv {
   readonly maxRules: number;
   readonly maxOnMinutes: number;
   readonly allowedOrigins: string[];
+  /**
+   * ALLOW-LIST of pipeline names `GET /pipelines` may report — this stack's own
+   * pipeline and nothing else. Anything not on this list is invisible to the
+   * public panel even if an AWS API hands it back.
+   */
+  readonly pipelines: string[];
   readonly actorSalt: string;
   readonly timezone: string;
   readonly panelUrl?: string;
   readonly siteUrl?: string;
+  /**
+   * G8 — whether an anonymous caller may MUTATE. Fail-closed: the parser
+   * defaults it to `false`, so a missing or malformed `ALLOW_ANON` leaves the
+   * mutating routes behind the bearer token rather than wide open.
+   */
+  readonly allowAnon: boolean;
+  /**
+   * The bearer token that authorises a mutation when `allowAnon` is false.
+   *
+   * Comes from this stack's `diego-control-admin-token` Secrets Manager
+   * secret. Never logged, never echoed in a response, and never compared with
+   * `===` — see `tokenMatches` in `handler.ts`. Undefined means "nobody can
+   * mutate", which is the safe direction to fail in.
+   */
+  readonly adminToken?: string;
 }
 
 /** Ports + clock + environment: the handler's entire universe. */
@@ -167,6 +288,8 @@ export interface Deps {
   readonly rds: RdsPort;
   readonly schedules: SchedulePort;
   readonly activity: ActivityPort;
+  /** Read-only, allow-listed CodePipeline access. */
+  readonly pipelines: PipelinePort;
   /** Epoch ms. Injected so the watchdog tests can time-travel. */
   now(): number;
   /** Random suffix for activity sort keys. */

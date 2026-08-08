@@ -9,6 +9,7 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as events from 'aws-cdk-lib/aws-events';
@@ -22,6 +23,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -33,6 +35,7 @@ import {
 } from './constructs/fenced-stack';
 import { panelMeta } from './constructs/panel-meta';
 import { applyProjectTags, COST_TAG_KEY, COST_TAG_VALUE } from './constructs/project-tags';
+import { MUTATING_ROUTES } from './control/handler';
 import { Diagram, Manifest, ManifestResource } from './control/types';
 
 /** Panel group for the control plane's own resources. */
@@ -56,6 +59,18 @@ export const DEFAULT_DOMAIN_NAME = 'diegopalominos.dev';
 export const EXPECTED_ACCOUNT = FENCE_EXPECTED_ACCOUNT;
 /** Visitor-created schedules are capped at this many (G5). */
 export const MAX_RULES = 10;
+/**
+ * G8 — may an ANONYMOUS caller mutate? Default NO.
+ *
+ * Read-only is the safe default, so a deployment that says nothing gets the
+ * private-ops-panel behaviour: anyone may look, only a bearer token may
+ * change. The public playground opts in deliberately with
+ * `-c allowAnon=true`, because letting visitors flip the lights is that
+ * deployment's whole purpose.
+ */
+export const DEFAULT_ALLOW_ANON = false;
+/** Secrets Manager secret holding the bearer token that authorises mutations. */
+export const ADMIN_TOKEN_SECRET_NAME = `${CONTROL_PREFIX}admin-token`;
 /** Auto-off after this long (G4), override with `-c maxOnMinutes=<n>`. */
 export const DEFAULT_MAX_ON_MINUTES = 180;
 /** Monthly budget in USD (F7), override with `-c budgetUsd=<n>`. */
@@ -89,10 +104,27 @@ const ROUTES: Array<{ method: apigwv2.HttpMethod; path: string }> = [
   { method: apigwv2.HttpMethod.GET, path: '/diagram' },
   { method: apigwv2.HttpMethod.GET, path: '/diag' },
   { method: apigwv2.HttpMethod.GET, path: '/activity' },
+  /*
+   * P1 — read-only pipelines.
+   *
+   * `GET /pipelines` is the ONLY pipeline route that exists. `POST
+   * /pipelines/run`, `/pipelines/approve` and `/pipelines/subscribe` are
+   * deliberately absent: they reach the handler through the catch-all and get
+   * the honest refusal payload, and the difference is visible right here in
+   * the route table. Nothing on this list can start a deployment.
+   */
+  { method: apigwv2.HttpMethod.GET, path: '/pipelines' },
 ];
 
-/** Per-route throttles for the mutating routes (G3). */
-const MUTATING_ROUTE_KEYS = ['POST /power', 'POST /rules', 'POST /rules/delete', 'POST /rules/toggle'];
+/**
+ * Per-route throttles for the mutating routes (G3).
+ *
+ * The list comes from the handler itself, which is also the list its G8 token
+ * gate protects: the routes that are rate-limited and the routes that require
+ * a token are one definition, so a fifth mutating route added later cannot be
+ * throttled but left ungated (or the reverse).
+ */
+const MUTATING_ROUTE_KEYS = MUTATING_ROUTES;
 
 /**
  * Props for the control stack.
@@ -113,6 +145,16 @@ export interface DiegoControlStackProps extends StackProps {
   readonly dbInstance?: rds.IDatabaseInstance;
   /** Alias of `dbInstance` (the app wires the site stack's `database`). */
   readonly database?: rds.IDatabaseInstance;
+  /**
+   * ALLOW-LIST: the pipelines the panel may READ. Today that is exactly one —
+   * the pipeline that deploys the site — and the Lambda's IAM statement names
+   * those ARNs and nothing else. Never `codepipeline:ListPipelines`: this
+   * account also runs unrelated production pipelines, and their names must not
+   * reach an anonymous page (P3).
+   */
+  readonly pipelines?: codepipeline.IPipeline[];
+  /** Alias of `pipelines` for the single-pipeline case (what the app passes). */
+  readonly pipeline?: codepipeline.IPipeline;
   /** Apex domain; the panel is published at `control.<domainName>`. */
   readonly domainName?: string;
   /** Alias of `domainName` (the app passes the site's resolved domain). */
@@ -132,6 +174,11 @@ export interface DiegoControlStackProps extends StackProps {
  * login: "it's like turning lights on or off". Everything that makes that
  * safe is in here.
  *
+ * That last part is now a choice, not a property of the stack. `allowAnon`
+ * (G8) decides whether a token-less caller may change anything; it defaults
+ * to FALSE, so an unqualified deploy is anonymous-read / token-write, and the
+ * public playground turns it on with `-c allowAnon=true`.
+ *
  * | scope       | contents |
  * | ----------- | -------- |
  * | `control`   | the control Lambda, its LogGroup, its role + permissions boundary, the throttled HTTP API |
@@ -146,7 +193,16 @@ export interface DiegoControlStackProps extends StackProps {
  * G2 desiredCount clamped to 0|1, no destructive endpoint exists ·
  * G3 route throttling + reserved concurrency · G4 auto-off watchdog ·
  * G5 capped, prefixed schedules in their own group · G6 CORS allow-list ·
- * G7 activity feed with hashed actors.
+ * G7 activity feed with hashed actors · G8 anonymous mutation is opt-in
+ * (`-c allowAnon=true`), and the handler — not the panel — enforces it.
+ *
+ * The pipeline surface adds three of its own:
+ * P1 read-only — `GET /pipelines` is the only pipeline route; run/approve/
+ * subscribe are refused honestly and hold no permission ·
+ * P2 briefly cached in the Lambda so the panel's polling cannot hammer
+ * CodePipeline · P3 an explicit allow-list of pipeline names/ARNs, never
+ * `codepipeline:ListPipelines` — the account's production pipelines must stay
+ * invisible to a public page.
  *
  * Same-account fencing (F1-F7) matters even more: this account may also host
  * unrelated production workloads. The account guard, the permissions boundary,
@@ -190,6 +246,27 @@ export class DiegoControlStack extends FencedStack {
       throw new Error('DiegoControlStack needs the site database: pass `dbInstance` (or `database`) from the site stack.');
     }
 
+    /*
+     * P3 — the pipeline allow-list, built from construct handles (never a
+     * hardcoded name): the SAME objects give the Lambda its `PIPELINES`
+     * environment value and its IAM statement its resource ARNs, so the two
+     * can never drift into "reports a pipeline it may not read" — or, worse,
+     * "may read a pipeline it was never handed".
+     */
+    const allowListedPipelines = dedupePipelines([
+      ...(props.pipelines ?? []),
+      ...(props.pipeline ? [props.pipeline] : []),
+    ]);
+    const pipelineNames = allowListedPipelines.map((pipeline) => pipeline.pipelineName);
+    const pipelineArns = allowListedPipelines.map((pipeline) => pipeline.pipelineArn);
+    if (pipelineArns.length === 0) {
+      Annotations.of(this).addInfo(
+        'No pipeline was passed to the control stack: GET /pipelines will answer 501 with an honest reason and the '
+        + 'role gets no codepipeline permission at all. Pass `pipeline` (or `pipelines`) from the site stack to '
+        + 'light up the panel\'s Pipelines page.',
+      );
+    }
+
     const domainName: string = props.domainName ?? props.siteDomainName
       ?? this.node.tryGetContext('domainName') ?? DEFAULT_DOMAIN_NAME;
     const controlHost: string = props.controlDomainName
@@ -198,6 +275,15 @@ export class DiegoControlStack extends FencedStack {
     const zone = this.resolveHostedZone(controlHost, props.hostedZoneId);
     const maxOnMinutes = numberContext(this, 'maxOnMinutes', DEFAULT_MAX_ON_MINUTES);
     const budgetUsd = numberContext(this, 'budgetUsd', DEFAULT_BUDGET_USD);
+    const allowAnon = resolveAllowAnon(this);
+    if (allowAnon) {
+      Annotations.of(this).addInfo(
+        'allowAnon=true: this deployment lets ANY anonymous caller flip the power and edit schedules — that is the '
+        + 'public playground\'s point, and the watchdog, the throttles, the 0|1 clamp and the activity feed are what '
+        + 'make it safe. Drop the context flag for a read-only deployment where mutations need the '
+        + `${ADMIN_TOKEN_SECRET_NAME} bearer token.`,
+      );
+    }
     const budgetEmail: string | undefined = this.node.tryGetContext('budgetEmail')
       ?? this.node.tryGetContext('notificationEmail');
 
@@ -255,6 +341,31 @@ export class DiegoControlStack extends FencedStack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /*
+     * G8 — the token that authorises a mutation when `allowAnon` is false.
+     *
+     * Same mechanism the site stack already uses for its maintainer API's
+     * ADMIN_TOKEN: a Secrets Manager secret with a generated value, so there
+     * is nothing to invent, type or paste anywhere. A SEPARATE secret, under
+     * this stack's own `diego-control-` prefix (the one path the F3 denies
+     * leave open to this role), because the two planes are different trust
+     * boundaries — leaking the site's maintainer token must not hand someone
+     * the control plane, or the reverse.
+     *
+     * It exists in BOTH modes. The public playground still wants a way for
+     * Diego's own panel to authenticate, and flipping `allowAnon` back to
+     * false must not require provisioning a credential in the same deploy
+     * that starts demanding it.
+     */
+    const adminToken = new secretsmanager.Secret(controlScope, 'AdminToken', {
+      secretName: ADMIN_TOKEN_SECRET_NAME,
+      description: 'Bearer token for mutating routes on the control API when allowAnon is false',
+      generateSecretString: {
+        excludePunctuation: true,
+        passwordLength: 48,
+      },
+    });
+
     const allowStatements = () => [
       // G1: exactly one service, by ARN. No wildcard, ever.
       new iam.PolicyStatement({
@@ -298,6 +409,23 @@ export class DiegoControlStack extends FencedStack {
         resources: [schedulerRole.roleArn],
         conditions: { StringEquals: { 'iam:PassedToService': 'scheduler.amazonaws.com' } },
       }),
+      /*
+       * P1/P3: the pipeline surface, in one statement.
+       *
+       * Two READ actions, on the allow-listed pipeline ARNs only. There is no
+       * `codepipeline:ListPipelines` (it is account-wide and would enumerate
+       * the co-resident production pipelines), no `StartPipelineExecution` and
+       * no `PutApprovalResult` — a stranger cannot deploy or approve, because
+       * the permission to do so does not exist. Omitted entirely when no
+       * pipeline was passed: no allow-list, no access.
+       */
+      ...(pipelineArns.length > 0
+        ? [new iam.PolicyStatement({
+          sid: 'ReadStateOfAllowListedPipelinesOnly',
+          actions: ['codepipeline:GetPipelineState', 'codepipeline:ListPipelineExecutions'],
+          resources: pipelineArns,
+        })]
+        : []),
       // G7: the activity feed, read + append only. No Scan, no Delete.
       new iam.PolicyStatement({
         sid: 'ActivityFeedAppendAndRead',
@@ -312,8 +440,9 @@ export class DiegoControlStack extends FencedStack {
       }),
     ];
 
-    const denyStatements = () => buildDenyStatements({
+    const denyStatements = (protectedServices?: string[]) => buildDenyStatements({
       protectedStackPrefixes: resolveProtectedStackPrefixes(this),
+      protectedServices,
       partition: this.partition,
       region: this.region,
       account: this.account,
@@ -322,6 +451,7 @@ export class DiegoControlStack extends FencedStack {
       schedulerRoleArn: schedulerRole.roleArn,
       scheduleArnPattern,
       scheduleGroupArn,
+      pipelineArns,
     });
 
     // F2: the second wall. Effective permissions are identity ∩ boundary, so
@@ -329,10 +459,28 @@ export class DiegoControlStack extends FencedStack {
     // these actions and ARNs; F3's explicit denies then beat any allow.
     const guardScope = new Construct(this, 'guard');
     const boundary = new iam.ManagedPolicy(guardScope, 'ControlBoundary', {
-      managedPolicyName: `${CONTROL_PREFIX}boundary`,
+      /*
+       * Deliberately UNNAMED (F5 makes an exception here).
+       *
+       * A managed policy is replaced — not updated in place — whenever
+       * CloudFormation decides the resource must be recreated, and with a
+       * fixed physical name the create-before-delete step collides with the
+       * live policy: "A policy called diego-control-boundary already exists".
+       * That deadlocks every future deploy of this stack and can only be
+       * broken by detaching the boundary from the role by hand, which is
+       * exactly the guardrail you least want to remove under pressure.
+       * CDK's generated name still carries the stack and construct id.
+       */
       description: 'Permissions boundary for the public playground control Lambda: '
-        + 'only this stack\'s ECS/RDS/Scheduler/DynamoDB/Logs actions, and never anything named as protected.',
-      statements: [...allowStatements(), ...denyStatements()],
+        + 'only this stack\'s ECS/RDS/Scheduler/DynamoDB/Logs/CodePipeline-read actions, '
+        + 'and never anything named as protected.',
+      /*
+       * A managed policy is capped at 6,144 characters and this is the app's
+       * largest document, so the name-based deny is expanded here only across
+       * the services the boundary grants — everywhere else the boundary's own
+       * implicit deny is already absolute. See BOUNDARY_PROTECTED_SERVICES.
+       */
+      statements: [...allowStatements(), ...denyStatements(BOUNDARY_PROTECTED_SERVICES)],
     });
 
     const controlRole = new iam.Role(controlScope, 'Role', {
@@ -351,8 +499,9 @@ export class DiegoControlStack extends FencedStack {
       database,
       controlLogGroupName: controlLogGroup.logGroupName,
       siteUrl,
+      allowAnon,
     });
-    const diagram = buildDiagram(manifest, controlHost, domainName);
+    const diagram = buildDiagram(manifest, controlHost, domainName, pipelineNames);
 
     this.controlFunction = new lambdaNodejs.NodejsFunction(controlScope, 'Api', {
       functionName,
@@ -389,9 +538,33 @@ export class DiegoControlStack extends FencedStack {
         SCHEDULER_ROLE_ARN: schedulerRole.roleArn,
         CONTROL_FN_ARN: controlFunctionArn,
         ACTIVITY_TABLE: activityTable.tableName,
+        /*
+         * P3: the allow-list, as names. The handler iterates exactly this list
+         * and drops anything else an API hands back; the IAM statement above
+         * is built from the same construct handles' ARNs.
+         */
+        PIPELINES: pipelineNames.join(','),
         MAX_ON_MINUTES: String(maxOnMinutes),
         MAX_RULES: String(MAX_RULES),
         RULE_PREFIX: RULE_PREFIX,
+        /*
+         * G8: the same value that went into MANIFEST above, so the flag the
+         * panel reads and the flag the gate enforces are one decision. The
+         * handler treats only the exact string 'true' as opting in.
+         */
+        ALLOW_ANON: String(allowAnon),
+        /*
+         * The bearer token, as a `{{resolve:secretsmanager:...}}` dynamic
+         * reference — the same trick the site stack uses for DATABASE_URL.
+         * CloudFormation substitutes the value at deploy time, so no secret
+         * material lands in the synthesized template or in cdk.out, and the
+         * handler needs no SDK call (and no secretsmanager permission) on the
+         * request path. The trade-off, stated plainly: the resolved value is
+         * then readable in the function's configuration by anyone who can
+         * already read this account's Lambda config. Rotating it is
+         * `update-secret` followed by a redeploy of this stack.
+         */
+        ADMIN_TOKEN: adminToken.secretValue.unsafeUnwrap(),
         ALLOWED_ORIGINS: allowedOrigins.join(','),
         // Stable per-stack salt for the hashed actor prefix (G7). Not secret,
         // but unguessable enough that a /24 cannot be brute-forced from the
@@ -414,7 +587,9 @@ export class DiegoControlStack extends FencedStack {
     // ── HTTP API: throttled (G3), CORS-restricted (G6) ──────────────────
     const api = new apigwv2.HttpApi(controlScope, 'HttpApi', {
       apiName: `${CONTROL_PREFIX}api`,
-      description: 'Public control plane for diegopalominos.dev (anonymous by design, throttled and fenced)',
+      description: allowAnon
+        ? 'Public control plane for diegopalominos.dev (anonymous mutation by design, throttled and fenced)'
+        : 'Public control plane for diegopalominos.dev (anonymous reads, token-gated mutations, throttled and fenced)',
       createDefaultStage: false,
       corsPreflight: {
         allowOrigins: allowedOrigins,
@@ -644,6 +819,11 @@ export class DiegoControlStack extends FencedStack {
     panelMeta(watchdogRule, { category: 'ops', group: CONTROL_APP_KEY, label: `Auto-off after ${maxOnMinutes} min` });
     panelMeta(lightsOutRule, { category: 'ops', group: CONTROL_APP_KEY, label: 'Nightly lights-out' });
     panelMeta(boundary, { category: 'security', group: CONTROL_APP_KEY, label: 'Control permissions boundary' });
+    panelMeta(adminToken, {
+      category: 'secret',
+      group: CONTROL_APP_KEY,
+      label: allowAnon ? 'Control API token (anonymous mutation is on)' : 'Control API token (required to mutate)',
+    });
 
     // ── outputs ─────────────────────────────────────────────────────────
     new CfnOutput(this, 'ControlPanelUrl', { value: this.panelUrl });
@@ -720,19 +900,84 @@ interface DenyContext {
   readonly scheduleArnPattern: string;
   readonly scheduleGroupArn: string;
   /**
+   * The pipelines the panel is allowed to READ. Everything else in
+   * CodePipeline — every other pipeline, and every mutating action on this one
+   * — is denied. Empty means "deny CodePipeline outright".
+   */
+  readonly pipelineArns: string[];
+  /**
    * Name fragments of co-resident production stacks to deny by name. Supplied
    * through `-c protectedStackPrefixes=a,b` (or `CDK_PROTECTED_STACK_PREFIXES`)
    * so no production stack name ships in source. Empty simply adds no
    * name-based deny — the ARN-scoped allow list is still the primary fence.
    */
   readonly protectedStackPrefixes?: string[];
+  /**
+   * Services the name-based deny is expanded across. Defaults to
+   * `PROTECTED_SERVICES`; the boundary passes `BOUNDARY_PROTECTED_SERVICES`.
+   */
+  readonly protectedServices?: string[];
 }
+
+/**
+ * Services the name-based deny (F3) covers on the ROLE's identity policy:
+ * everything this control plane could conceivably be edited into reaching.
+ */
+export const PROTECTED_SERVICES = [
+  'cloudformation', 'ecs', 'rds', 'secretsmanager', 'ssm', 'logs',
+  'lambda', 'dynamodb', 'events', 'scheduler', 'ecr', 'elasticloadbalancing',
+  'cloudfront', 'ec2', 'kms', 'codepipeline',
+  /*
+   * NOT 'iam'. An IAM ARN's resource must start with a known type
+   * (role/, policy/, user/, …), so a bare `*<name>*` glob is rejected at
+   * deploy with "IAM resource path must either be *, root, or start with
+   * user/, …". Nothing is lost: DenyIamExceptPassingTheSchedulerRole below
+   * already denies iam:* on every resource except the one scheduler role,
+   * which is strictly stronger than any name-based pattern could be.
+   */
+  // s3 last: its ARNs carry no region or account, so it gets its own shape.
+  's3',
+];
+
+/**
+ * The same deny, as expanded on the PERMISSIONS BOUNDARY: only the services
+ * the boundary actually grants.
+ *
+ * Not a weakening. A principal is authorized only where its boundary allows,
+ * so for every other service the boundary's implicit deny is already total and
+ * an extra `arn:aws:s3:::*prod*` pattern in there can never decide anything.
+ * It is dropped for a concrete reason: an IAM managed policy is capped at
+ * 6,144 characters, this document is by far the app's biggest, and the full
+ * prefixes x services cross-product no longer fits beside the pipeline
+ * statements. The ROLE keeps the wide list (`PROTECTED_SERVICES`), where it
+ * does guard against a future edit widening the identity policy — and a deny
+ * on either side is enough, because effective permissions are the
+ * intersection of the two.
+ */
+export const BOUNDARY_PROTECTED_SERVICES = [
+  'ecs', 'rds', 'scheduler', 'dynamodb', 'logs', 'codepipeline',
+];
 
 /**
  * F3 — explicit denies. Deny beats allow everywhere in IAM, so these hold
  * even if a future edit widens the identity policy, and they are attached to
  * BOTH the role and the permissions boundary.
  */
+/**
+ * Services whose ARNs are GLOBAL: no region, and for S3 no account either.
+ * IAM rejects a region in these outright — `arn:aws:iam:*:*:*name*` fails the
+ * deploy with "IAM resource ... cannot contain region information", which
+ * synth and template tests cannot catch because only IAM validates ARN shape.
+ */
+const REGIONLESS_SERVICES = new Set(['iam', 'cloudfront', 'organizations', 'route53', 'waf']);
+
+/** A name-matching ARN pattern for one service, in that service's own shape. */
+export function protectedArn(partition: string, service: string, prefix: string): string {
+  if (service === 's3') return `arn:${partition}:s3:::*${prefix}*`;
+  if (REGIONLESS_SERVICES.has(service)) return `arn:${partition}:${service}::*:*${prefix}*`;
+  return `arn:${partition}:${service}:*:*:*${prefix}*`;
+}
+
 export function buildDenyStatements(ctx: DenyContext): iam.PolicyStatement[] {
   const protectedPrefixes = ctx.protectedStackPrefixes ?? [];
   /*
@@ -743,15 +988,10 @@ export function buildDenyStatements(ctx: DenyContext): iam.PolicyStatement[] {
    * covering everything this control plane could conceivably reach. S3 gets
    * its own shape because its ARNs carry no region or account.
    */
-  const PROTECTED_SERVICES = [
-    'cloudformation', 'ecs', 'rds', 'secretsmanager', 'ssm', 'logs',
-    'lambda', 'dynamodb', 'events', 'scheduler', 'ecr', 'elasticloadbalancing',
-    'cloudfront', 'ec2', 'kms',
-  ];
-  const protectedArnPatterns = protectedPrefixes.flatMap((prefix) => [
-    ...PROTECTED_SERVICES.map((svc) => `arn:${ctx.partition}:${svc}:*:*:*${prefix}*`),
-    `arn:${ctx.partition}:s3:::*${prefix}*`,
-  ]);
+  const services = ctx.protectedServices ?? PROTECTED_SERVICES;
+  const protectedArnPatterns = protectedPrefixes.flatMap((prefix) =>
+    services.map((svc) => protectedArn(ctx.partition, svc, prefix)),
+  );
 
   return [
     ...(protectedArnPatterns.length > 0
@@ -831,6 +1071,51 @@ export function buildDenyStatements(ctx: DenyContext): iam.PolicyStatement[] {
       actions: ['ecs:UpdateService'],
       notResources: [ctx.serviceArn],
     }),
+    /*
+     * P1 — on the allow-listed pipelines, the two reads and NOTHING else.
+     *
+     * `NotAction` is the compact way to say "everything but these" and it is
+     * also the future-proof one: a CodePipeline API released next year is
+     * denied the day it ships, without anyone editing this list. It covers
+     * every mutation (StartPipelineExecution, PutApprovalResult, Update…) and
+     * the reads that would say too much on a public page — GetPipeline (the
+     * whole definition: source repo, buildspecs, role ARNs) and the
+     * action/execution detail calls (commit messages, console URLs).
+     *
+     * `NotAction` deserves the usual caution: paired with `Resource: '*'` it
+     * would deny this role's ECS and RDS work too. It is pinned to the
+     * pipeline ARNs, so it only ever judges requests against those pipelines.
+     */
+    ...(ctx.pipelineArns.length > 0
+      ? [
+        new iam.PolicyStatement({
+          sid: 'DenyEverythingButStateReadsOnAllowListedPipelines',
+          effect: iam.Effect.DENY,
+          notActions: ['codepipeline:GetPipelineState', 'codepipeline:ListPipelineExecutions'],
+          resources: ctx.pipelineArns,
+        }),
+        /*
+         * P3 — and nothing at all outside the allow-list.
+         *
+         * `NotResource` also catches the account-wide calls, whose resource is
+         * every pipeline rather than one of ours: `codepipeline:ListPipelines`
+         * — the call that would enumerate the production pipelines living in
+         * this account — is denied here.
+         */
+        new iam.PolicyStatement({
+          sid: 'DenyCodePipelineOutsideTheAllowList',
+          effect: iam.Effect.DENY,
+          actions: ['codepipeline:*'],
+          notResources: ctx.pipelineArns,
+        }),
+      ]
+      // No allow-list, nothing to except: CodePipeline is denied outright.
+      : [new iam.PolicyStatement({
+        sid: 'DenyCodePipelineEntirely',
+        effect: iam.Effect.DENY,
+        actions: ['codepipeline:*'],
+        resources: ['*'],
+      })]),
     new iam.PolicyStatement({
       sid: 'DenySchedulerOutsideOwnGroup',
       effect: iam.Effect.DENY,
@@ -858,6 +1143,8 @@ interface ManifestInput {
   readonly database: rds.IDatabaseInstance;
   readonly controlLogGroupName: string;
   readonly siteUrl: string;
+  /** G8: whether anonymous callers may mutate. Defaults to the safe `false`. */
+  readonly allowAnon?: boolean;
 }
 
 /**
@@ -904,10 +1191,15 @@ export function buildManifest(input: ManifestInput): Manifest {
     },
   ];
 
+  const allowAnon = input.allowAnon ?? DEFAULT_ALLOW_ANON;
   return {
     env: 'prod',
     app: SITE_APP_KEY,
-    publicDemo: true,
+    // G8, and its pre-flag alias. Both from one value: a manifest that
+    // advertised `publicDemo: true` while the gate refused anonymous
+    // mutations would send the panel to draw buttons the API then rejects.
+    allowAnon,
+    publicDemo: allowAnon,
     siteUrl: input.siteUrl,
     resources,
   };
@@ -922,12 +1214,27 @@ export function buildManifest(input: ManifestInput): Manifest {
  * live on/off state is merged in at request time. Node ids match panel keys so
  * that merge is generic.
  */
-export function buildDiagram(manifest: Manifest, controlHost: string, siteDomain: string): Diagram {
+export function buildDiagram(
+  manifest: Manifest,
+  controlHost: string,
+  siteDomain: string,
+  pipelineNames: string[] = [],
+): Diagram {
   const serviceKey = manifest.resources.find((r) => r.type === 'ecs')?.key ?? 'blog';
   const databaseKey = manifest.resources.find((r) => r.type === 'rds')?.key ?? 'database';
+  // The diagram is served publicly too, so it shows the allow-listed
+  // pipelines and no others — same list the API reports.
+  const pipelineId = (index: number) => (index === 0 ? 'pipeline' : `pipeline-${index}`);
 
   return {
     nodes: [
+      ...pipelineNames.map((name, index) => ({
+        id: pipelineId(index),
+        label: name,
+        type: 'AWS::CodePipeline::Pipeline',
+        cat: 'pipeline',
+        group: SITE_APP_KEY,
+      })),
       { id: 'visitor', label: 'Web', type: 'External::User', cat: 'traffic' },
       { id: 'panel', label: controlHost, type: 'AWS::CloudFront::Distribution', cat: 'edge', group: CONTROL_APP_KEY },
       { id: 'api', label: 'Control API (throttled)', type: 'AWS::ApiGatewayV2::Api', cat: 'edge', group: CONTROL_APP_KEY },
@@ -940,6 +1247,7 @@ export function buildDiagram(manifest: Manifest, controlHost: string, siteDomain
       { id: 'site', label: siteDomain, type: 'AWS::CloudFront::Distribution', cat: 'edge', group: SITE_APP_KEY },
     ],
     edges: [
+      ...pipelineNames.map((_name, index) => ({ from: pipelineId(index), to: serviceKey, label: 'deploy', pipe: true })),
       { from: 'visitor', to: 'panel', label: 'HTTPS · 443', ext: true },
       { from: 'visitor', to: 'site', label: 'HTTPS · 443', ext: true },
       { from: 'panel', to: 'api', label: 'fetch' },
@@ -953,6 +1261,15 @@ export function buildDiagram(manifest: Manifest, controlHost: string, siteDomain
       { from: serviceKey, to: databaseKey, label: 'postgres · 5432' },
     ],
   };
+}
+
+/** Same pipeline passed twice (`pipeline` + `pipelines`) is still one entry. */
+function dedupePipelines(pipelines: codepipeline.IPipeline[]): codepipeline.IPipeline[] {
+  const byArn = new Map<string, codepipeline.IPipeline>();
+  for (const pipeline of pipelines) {
+    if (!byArn.has(pipeline.pipelineArn)) byArn.set(pipeline.pipelineArn, pipeline);
+  }
+  return [...byArn.values()];
 }
 
 /** The Eleva panel key: the id of the resource's parent construct. */
@@ -999,6 +1316,26 @@ function inferZoneName(domainName: string): string {
  * account pool. See the call site for why that is the safe default in an
  * account whose concurrency quota is still the default 10.
  */
+/**
+ * G8 — may anonymous callers mutate? `-c allowAnon=true|false` (or
+ * `CDK_ALLOW_ANON`), defaulting to `DEFAULT_ALLOW_ANON` (false).
+ *
+ * Anything that is not exactly `true` or `false` throws rather than being
+ * coerced. `-c allowAnon=yes` quietly meaning "no" is the kind of near-miss
+ * that leaves a deployment locked out — or, in the other direction, open —
+ * and neither should be discoverable only in production.
+ */
+export function resolveAllowAnon(scope: Construct): boolean {
+  const raw = scope.node.tryGetContext('allowAnon') ?? process.env.CDK_ALLOW_ANON;
+  if (raw === undefined || raw === null || raw === '') return DEFAULT_ALLOW_ANON;
+  if (raw === true || raw === 'true') return true;
+  if (raw === false || raw === 'false') return false;
+  throw new Error(
+    `allowAnon must be true or false, got: ${String(raw)}. It decides whether an ANONYMOUS caller may change `
+    + 'anything through the control API, so it is never guessed.',
+  );
+}
+
 export function resolveReservedConcurrency(scope: Construct): number | undefined {
   const raw = scope.node.tryGetContext('reservedConcurrency') ?? process.env.CDK_RESERVED_CONCURRENCY;
   if (raw === undefined || raw === null || raw === '') return undefined;

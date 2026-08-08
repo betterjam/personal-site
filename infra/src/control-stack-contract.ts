@@ -1,4 +1,5 @@
 import { StackProps } from 'aws-cdk-lib';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 
@@ -22,6 +23,14 @@ export interface DiegoControlStackProps extends StackProps {
   readonly service: ecs.FargateService;
   /** The one database the panel may start/stop. */
   readonly database: rds.DatabaseInstance;
+  /**
+   * The one pipeline the public panel may READ (name + ARN, never a string
+   * literal in the Lambda). It becomes the control Lambda's pipeline
+   * allow-list and the only resource its `codepipeline:GetPipelineState` /
+   * `ListPipelineExecutions` statement names — the panel must never be able to
+   * enumerate the account's other pipelines.
+   */
+  readonly pipeline: codepipeline.IPipeline;
   /** Apex domain of the site when DNS is configured, else undefined. */
   readonly siteDomainName?: string;
   /** Where the site is reachable — shown by the panel as "the lights". */

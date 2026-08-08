@@ -100,6 +100,12 @@ export class DiegoSiteStack extends FencedStack {
   public readonly service: ecs.FargateService;
   /** The one database the control plane may start/stop. */
   public readonly database: rds.DatabaseInstance;
+  /**
+   * The pipeline that deploys this stack. Handed to the control stack so its
+   * Lambda can be given READ access to this ARN and no other — the public
+   * panel shows this pipeline's state and never lists the account.
+   */
+  public readonly pipeline: codepipeline.Pipeline;
   /** CloudFront's `/api/*` origin. Not the public entrypoint itself. */
   public readonly loadBalancer: elbv2.ApplicationLoadBalancer;
   /** Private bucket holding the built frontend (published by the pipeline). */
@@ -680,6 +686,8 @@ export class DiegoSiteStack extends FencedStack {
         },
       ],
     });
+
+    this.pipeline = pipeline;
 
     // ── shared SSM parameters (/diego/prod/site/*) ──────────────────────
     new ssm.StringParameter(this, 'SiteBucketParam', {

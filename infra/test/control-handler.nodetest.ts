@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  advertisedSurfaces,
+  bearerToken,
   clampDesired,
   corsHeaders,
   createHandler,
+  FAILURE_MAX_LENGTH,
   hashActor,
   ipPrefix,
+  MUTATING_ROUTES,
   normalizeRuleName,
+  PIPELINE_CACHE_TTL_MS,
+  tokenMatches,
   validateRule,
 } from '../src/control/handler';
 import {
@@ -17,6 +23,8 @@ import {
   Diagram,
   HttpResult,
   Manifest,
+  PipelineExecutionSummary,
+  PipelineStateSnapshot,
   PowerMarker,
   ScheduleRule,
 } from '../src/control/types';
@@ -34,10 +42,25 @@ const PANEL_ORIGIN = 'https://control.diegopalominos.dev';
 const DEV_ORIGIN = 'http://localhost:4200';
 const NOW = Date.parse('2026-08-05T12:00:00.000Z');
 const MINUTE = 60_000;
+/** The one pipeline this stack owns — the whole allow-list. */
+const OWN_PIPELINE = 'eleva-diego-site-prod';
+/**
+ * A co-resident PRODUCTION pipeline. It exists in these tests purely so they
+ * can prove it never appears in a response, is never asked about, and is
+ * dropped even when a port hands it over unprompted.
+ */
+const PRODUCTION_PIPELINE = 'eleva-api-prod';
+/**
+ * Stand-in for the generated `diego-control-admin-token` secret. The real one
+ * never leaves Secrets Manager; these tests only need a value to compare
+ * against.
+ */
+const ADMIN_TOKEN = 'test-admin-token-2rWq9xL4';
 
 const manifest: Manifest = {
   env: 'prod',
   app: 'diego-site',
+  allowAnon: true,
   publicDemo: true,
   siteUrl: 'https://diegopalominos.dev',
   resources: [
@@ -78,10 +101,18 @@ const env: ControlEnv = {
   maxRules: 10,
   maxOnMinutes: 180,
   allowedOrigins: [PANEL_ORIGIN, DEV_ORIGIN],
+  pipelines: [OWN_PIPELINE],
   actorSalt: 'stack/DiegoControlStack/1234',
   timezone: 'America/Santiago',
   panelUrl: PANEL_ORIGIN,
   siteUrl: 'https://diegopalominos.dev',
+  /*
+   * The public playground's setting, so every test below this line exercises
+   * the behaviour that ships at control.diegopalominos.dev. The G8 section
+   * overrides it to `false` to test the read-only mode.
+   */
+  allowAnon: true,
+  adminToken: ADMIN_TOKEN,
 };
 
 /** In-memory stand-ins for ECS / RDS / Scheduler / DynamoDB. */
@@ -94,11 +125,16 @@ class Stub {
   public marker: PowerMarker | undefined = undefined;
   public clock = NOW;
 
+  public pipelineStates: Record<string, PipelineStateSnapshot> = {};
+  public pipelineExecutions: Record<string, PipelineExecutionSummary[]> = {};
+
   /** Recorded calls, so a test can assert exactly what reached AWS. */
   public desiredCounts: number[] = [];
   public rdsActions: string[] = [];
   public putRules: ScheduleRule[] = [];
   public removedRules: string[] = [];
+  /** Every CodePipeline call the handler made, in order. */
+  public pipelineCalls: string[] = [];
 
   public deps(overrides: Partial<ControlEnv> = {}): Deps {
     return {
@@ -148,26 +184,89 @@ class Stub {
           this.marker = marker;
         },
       },
+      /*
+       * The pipeline port takes a NAME and has no list operation — the stub
+       * mirrors the real port exactly, so a handler that tried to enumerate
+       * the account would not compile, let alone run.
+       */
+      pipelines: {
+        state: async (name) => {
+          this.pipelineCalls.push(`state:${name}`);
+          return this.pipelineStates[name];
+        },
+        executions: async (name, limit) => {
+          this.pipelineCalls.push(`executions:${name}:${limit}`);
+          return this.pipelineExecutions[name] ?? [];
+        },
+      },
       now: () => this.clock,
       id: () => 'testid',
     };
   }
 }
 
+/** A realistic GetPipelineState reply: source ok, build running. */
+function runningPipeline(name: string): PipelineStateSnapshot {
+  return {
+    name,
+    stages: [
+      {
+        name: 'Source',
+        status: 'Succeeded',
+        actions: [{ name: 'GitHub', status: 'Succeeded', lastStatusChange: '2026-08-05T11:40:00.000Z' }],
+      },
+      {
+        name: 'Build',
+        status: 'InProgress',
+        actions: [
+          { name: 'DockerBuild', status: 'InProgress', lastStatusChange: '2026-08-05T11:52:00.000Z' },
+          { name: 'FrontendBuild', status: 'InProgress', lastStatusChange: '2026-08-05T11:51:00.000Z' },
+        ],
+      },
+      { name: 'Deploy', status: 'Failed', actions: [] },
+    ],
+  };
+}
+
+/**
+ * A request from the panel.
+ *
+ * The default `authorization: 'Bearer '` is not an accident: that is what the
+ * panel sent unconditionally before it learned about tokens, and it must read
+ * as NO token — an empty bearer that authenticated anything would be the
+ * worst possible bug in G8. Pass `token` for a request that really carries
+ * one, or `authorization` to send a raw header.
+ */
 function http(
   method: string,
   path: string,
-  options: { body?: unknown; origin?: string; ip?: string } = {},
+  options: { body?: unknown; origin?: string; ip?: string; token?: string; authorization?: string } = {},
 ): ControlEvent {
+  const authorization = options.authorization
+    ?? (options.token === undefined ? 'Bearer ' : `Bearer ${options.token}`);
   return {
     version: '2.0',
     rawPath: path,
-    headers: options.origin ? { origin: options.origin, authorization: 'Bearer ' } : { authorization: 'Bearer ' },
+    headers: options.origin ? { origin: options.origin, authorization } : { authorization },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     requestContext: {
       http: { method, path, sourceIp: options.ip ?? '203.0.113.42' },
     },
   };
+}
+
+/** A minimal valid body for each mutating route, so only auth decides. */
+const MUTATION_BODIES: Record<string, unknown> = {
+  'POST /power': { target: 'all', state: 'off' },
+  'POST /rules': { name: 'nightly', schedule: 'cron(0 21 ? * MON-FRI *)', state: 'off', target: 'all' },
+  'POST /rules/delete': { name: 'nightly' },
+  'POST /rules/toggle': { name: 'nightly', enabled: false },
+};
+
+/** `'POST /power'` -> the arguments `http()` wants. */
+function mutation(route: string): { method: string; path: string; body: unknown } {
+  const [method, path] = route.split(' ');
+  return { method, path, body: MUTATION_BODIES[route] };
 }
 
 function json(result: HttpResult | Record<string, unknown>): any {
@@ -512,6 +611,249 @@ void test('GET /activity returns the 20 most recent entries', async () => {
   assert.equal(json(result).ttlDays, 30);
 });
 
+// ── P1/P2/P3: the read-only, allow-listed pipeline surface ─────────────────
+
+void test('GET /pipelines maps GetPipelineState onto the panel shape', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  stub.pipelineExecutions[OWN_PIPELINE] = [
+    { id: 'abcdef1234567890', status: 'InProgress', startTime: '2026-08-05T11:50:00.000Z' },
+    { id: 'bbbbbbbb-2222', status: 'Succeeded', startTime: '2026-08-05T09:00:00.000Z' },
+  ];
+  const handle = createHandler(stub.deps());
+
+  const result = await handle(http('GET', '/pipelines', { origin: PANEL_ORIGIN })) as HttpResult;
+  const body = json(result);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(body.pipelines.length, 1);
+  const pipeline = body.pipelines[0];
+  assert.equal(pipeline.name, OWN_PIPELINE);
+  assert.deepEqual(pipeline.stages, [
+    { name: 'Source', status: 'Succeeded' },
+    { name: 'Build', status: 'InProgress' },
+    { name: 'Deploy', status: 'Failed' },
+  ]);
+  // `updated` is the newest action status change, as an ISO string.
+  assert.equal(pipeline.updated, '2026-08-05T11:52:00.000Z');
+  assert.deepEqual(pipeline.history, [
+    { status: 'InProgress', when: '2026-08-05T11:50:00.000Z', id: 'abcdef12' },
+    { status: 'Succeeded', when: '2026-08-05T09:00:00.000Z', id: 'bbbbbbbb' },
+  ]);
+  // Nothing failed with a message, so no failure field is invented.
+  assert.equal('failure' in pipeline, false);
+});
+
+void test('GET /pipelines reports the first failed action\'s message, truncated', async () => {
+  const stub = new Stub();
+  const long = `Docker build failed: ${'x'.repeat(600)}`;
+  stub.pipelineStates[OWN_PIPELINE] = {
+    name: OWN_PIPELINE,
+    stages: [
+      { name: 'Source', status: 'Succeeded', actions: [{ name: 'GitHub', status: 'Succeeded' }] },
+      {
+        name: 'Build',
+        status: 'Failed',
+        actions: [
+          { name: 'DockerBuild', status: 'Failed', errorMessage: long },
+          { name: 'FrontendBuild', status: 'Failed', errorMessage: 'the second failure is not the headline' },
+        ],
+      },
+    ],
+  };
+  const handle = createHandler(stub.deps());
+
+  const pipeline = json(await handle(http('GET', '/pipelines'))).pipelines[0];
+
+  assert.equal(pipeline.failure.length, FAILURE_MAX_LENGTH);
+  assert.ok(pipeline.failure.startsWith('Docker build failed: '));
+  assert.ok(pipeline.failure.endsWith('…'));
+  assert.ok(!pipeline.failure.includes('second failure'));
+});
+
+void test('GET /pipelines asks only about allow-listed pipelines', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  stub.pipelineStates[PRODUCTION_PIPELINE] = runningPipeline(PRODUCTION_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  const body = json(await handle(http('GET', '/pipelines')));
+
+  assert.deepEqual(body.pipelines.map((p: any) => p.name), [OWN_PIPELINE]);
+  // The production pipeline is never even named in a call.
+  assert.ok(!stub.pipelineCalls.some((call) => call.includes(PRODUCTION_PIPELINE)));
+  assert.ok(!JSON.stringify(body).includes(PRODUCTION_PIPELINE));
+});
+
+void test('a pipeline the port hands back off-list is dropped, not rendered', async () => {
+  const stub = new Stub();
+  // The port answers a question about our pipeline with somebody else's — the
+  // shape a mis-wired alias, a rename or a hostile stub would produce.
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(PRODUCTION_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  const result = await handle(http('GET', '/pipelines')) as HttpResult;
+
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(json(result).pipelines, []);
+  assert.ok(!(result.body ?? '').includes(PRODUCTION_PIPELINE));
+});
+
+void test('GET /pipelines never advertises a pending approval or its token', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = {
+    name: OWN_PIPELINE,
+    stages: [
+      { name: 'Source', status: 'Succeeded', actions: [{ name: 'GitHub', status: 'Succeeded' }] },
+      {
+        name: 'Approve',
+        status: 'InProgress',
+        // A real GetPipelineState carries `latestExecution.token` here. The
+        // port has no field for it, so it cannot reach the response — and the
+        // handler does not surface the gate at all, because the Approve button
+        // on a public panel cannot work.
+        actions: [{ name: 'ManualApproval', status: 'InProgress', lastStatusChange: '2026-08-05T11:55:00.000Z' }],
+      },
+    ],
+  };
+  const handle = createHandler(stub.deps());
+
+  const result = await handle(http('GET', '/pipelines')) as HttpResult;
+  const pipeline = json(result).pipelines[0];
+
+  assert.equal(pipeline.pendingApproval, undefined);
+  assert.equal('pendingApproval' in pipeline, false);
+  assert.ok(!(result.body ?? '').includes('token'));
+  // The stage itself is still shown, honestly, as InProgress.
+  assert.deepEqual(pipeline.stages[1], { name: 'Approve', status: 'InProgress' });
+});
+
+void test('GET /pipelines exposes no console/log URL', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  const result = await handle(http('GET', '/pipelines')) as HttpResult;
+
+  assert.equal(json(result).pipelines[0].logUrl, undefined);
+  assert.ok(!(result.body ?? '').includes('console.aws.amazon.com'));
+});
+
+void test('history is capped at the last five runs', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  stub.pipelineExecutions[OWN_PIPELINE] = Array.from({ length: 12 }, (_, i) => ({
+    id: `run-${i}`,
+    status: i === 0 ? 'Failed' : 'Succeeded',
+    startTime: new Date(NOW - i * 60 * MINUTE).toISOString(),
+    summary: i === 0 ? 'Stopped by the pipeline owner' : undefined,
+  }));
+  const handle = createHandler(stub.deps());
+
+  const pipeline = json(await handle(http('GET', '/pipelines'))).pipelines[0];
+
+  assert.equal(pipeline.history.length, 5);
+  assert.equal(pipeline.history[0].summary, 'Stopped by the pipeline owner');
+  assert.equal(pipeline.history[1].summary, undefined);
+  assert.ok(stub.pipelineCalls.includes(`executions:${OWN_PIPELINE}:5`));
+});
+
+void test('pipeline state is cached so the panel\'s polling cannot hammer CodePipeline', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  await handle(http('GET', '/pipelines'));
+  const afterFirst = [...stub.pipelineCalls];
+  assert.deepEqual(afterFirst, [`state:${OWN_PIPELINE}`, `executions:${OWN_PIPELINE}:5`]);
+
+  // Five more polls inside the window: no further AWS calls at all.
+  for (let i = 0; i < 5; i++) {
+    stub.clock += 5_000;
+    const cached = json(await handle(http('GET', '/pipelines')));
+    assert.equal(cached.pipelines[0].name, OWN_PIPELINE);
+  }
+  assert.deepEqual(stub.pipelineCalls, afterFirst);
+
+  // Past the TTL the state is refreshed.
+  stub.clock = NOW + PIPELINE_CACHE_TTL_MS + 1;
+  await handle(http('GET', '/pipelines'));
+  assert.deepEqual(stub.pipelineCalls, [...afterFirst, ...afterFirst]);
+});
+
+void test('an unreadable pipeline degrades to an empty list instead of a 500', async () => {
+  const stub = new Stub();
+  const deps = stub.deps();
+  const handle = createHandler({
+    ...deps,
+    pipelines: {
+      ...deps.pipelines,
+      state: async () => { throw Object.assign(new Error('denied'), { name: 'AccessDeniedException' }); },
+    },
+  });
+
+  const result = await handle(http('GET', '/pipelines')) as HttpResult;
+
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(json(result).pipelines, []);
+});
+
+void test('with an empty allow-list GET /pipelines refuses honestly rather than listing anything', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  const handle = createHandler(stub.deps({ pipelines: [] }));
+
+  const result = await handle(http('GET', '/pipelines')) as HttpResult;
+
+  assert.equal(result.statusCode, 501);
+  assert.equal(json(result).supported, false);
+  assert.deepEqual(json(result).pipelines, []);
+  assert.match(json(result).reason, /never lists the account/);
+  assert.deepEqual(stub.pipelineCalls, []);
+});
+
+void test('run / approve / subscribe refuse politely and say why', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  const refusals: Array<[string, string, unknown]> = [
+    ['POST', '/pipelines/run', { name: OWN_PIPELINE }],
+    ['POST', '/pipelines/approve', { name: OWN_PIPELINE, stage: 'Approve', action: 'ManualApproval', token: 'x', approved: true }],
+    ['POST', '/pipelines/subscribe', { email: 'stranger@example.com' }],
+  ];
+
+  for (const [method, path, body] of refusals) {
+    const result = await handle(http(method, path, { body, origin: PANEL_ORIGIN })) as HttpResult;
+    assert.equal(result.statusCode, 501, path);
+    assert.equal(json(result).supported, false, path);
+    assert.match(json(result).reason, /read-only public demo/i, path);
+    assert.equal(json(result).ok, undefined, path);
+  }
+
+  // The refusals are refusals: no AWS call of any kind was made.
+  assert.deepEqual(stub.pipelineCalls, []);
+  assert.deepEqual(stub.desiredCounts, []);
+  assert.deepEqual(stub.rdsActions, []);
+
+  // …and the subscriber list stays empty rather than leaking addresses.
+  const subscriptions = await handle(http('GET', '/pipelines/subscriptions')) as HttpResult;
+  assert.equal(subscriptions.statusCode, 501);
+  assert.deepEqual(json(subscriptions).subscriptions, []);
+  assert.match(json(subscriptions).reason, /read-only public demo/i);
+});
+
+void test('the refusals hold for a mutation dressed up as the read route', async () => {
+  const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  const handle = createHandler(stub.deps());
+
+  // POST /pipelines is not a route at all: 404, and nothing is started.
+  const posted = await handle(http('POST', '/pipelines', { body: { name: OWN_PIPELINE } })) as HttpResult;
+  assert.equal(posted.statusCode, 404);
+  assert.deepEqual(stub.pipelineCalls, []);
+});
+
 // ── G6: CORS ───────────────────────────────────────────────────────────────
 
 void test('corsHeaders echoes only allow-listed origins and never uses a wildcard', () => {
@@ -601,6 +943,7 @@ void test('GET /diagram merges live state onto the synth-time graph', async () =
 
 void test('GET /diag reports what works and is honest about what is skipped', async () => {
   const stub = new Stub();
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
   const handle = createHandler(stub.deps());
 
   const checks = json(await handle(http('GET', '/diag'))).checks as any[];
@@ -610,8 +953,23 @@ void test('GET /diag reports what works and is honest about what is skipped', as
   assert.equal(byName['RDS instance'].ok, true);
   assert.equal(byName['Scheduling rules'].ok, true);
   assert.equal(byName['Activity log'].ok, true);
-  assert.equal(byName.Pipelines.skipped, true);
+  // The pipeline check reads the allow-listed pipeline BY NAME, never a list.
+  assert.equal(byName['Pipelines (read-only)'].ok, true);
+  assert.deepEqual(stub.pipelineCalls, [`state:${OWN_PIPELINE}`]);
+  assert.equal(byName['Logs explorer'].skipped, true);
   assert.equal(byName['Drift detection'].skipped, true);
+});
+
+void test('GET /diag says so when no pipeline is exposed at all', async () => {
+  const stub = new Stub();
+  const handle = createHandler(stub.deps({ pipelines: [] }));
+
+  const checks = json(await handle(http('GET', '/diag'))).checks as any[];
+  const check = checks.find((c) => c.name === 'Pipelines (read-only)');
+
+  assert.equal(check.skipped, true);
+  assert.match(check.error, /never lists the account/);
+  assert.deepEqual(stub.pipelineCalls, []);
 });
 
 void test('a failing port shows up as a failed check rather than a 500', async () => {
@@ -637,10 +995,6 @@ void test('skipped surfaces answer 501 with an honest reason and an empty collec
   assert.equal(json(logs).supported, false);
   assert.deepEqual(json(logs).events, []);
   assert.match(json(logs).reason, /logs:FilterLogEvents/);
-
-  const pipelines = await handle(http('GET', '/pipelines')) as HttpResult;
-  assert.equal(pipelines.statusCode, 501);
-  assert.deepEqual(json(pipelines).pipelines, []);
 
   const drift = await handle(http('POST', '/drift')) as HttpResult;
   assert.equal(drift.statusCode, 501);
@@ -686,4 +1040,337 @@ void test('a malformed body does not crash the handler', async () => {
 
   assert.equal(result.statusCode, 400);
   assert.deepEqual(stub.desiredCounts, []);
+});
+
+// ── G8: anonymous mutation is opt-in ───────────────────────────────────────
+//
+// The whole point of these: the flag is enforced HERE. A panel that hides its
+// buttons is a courtesy; a handler that returns 401 is the boundary.
+
+/** Every route a token-less caller may still use, in either mode. */
+const READ_ROUTES = [
+  'GET /manifest',
+  'GET /status',
+  'GET /',
+  'GET /rules',
+  'GET /diagram',
+  'GET /diag',
+  'GET /activity',
+  'GET /pipelines',
+];
+
+/** A stub with a rule to toggle/delete and a pipeline to read. */
+function seeded(): Stub {
+  const stub = new Stub();
+  stub.rules = [{
+    name: 'diego-control-nightly',
+    schedule: 'cron(0 21 ? * MON-FRI *)',
+    timezone: 'America/Santiago',
+    target: 'all',
+    state: 'off',
+    enabled: true,
+  }];
+  stub.pipelineStates[OWN_PIPELINE] = runningPipeline(OWN_PIPELINE);
+  return stub;
+}
+
+void test('bearerToken treats an empty or bare Bearer header as no token at all', () => {
+  // What the panel sent for years, unconditionally.
+  assert.equal(bearerToken('Bearer '), undefined);
+  assert.equal(bearerToken('Bearer'), undefined);
+  assert.equal(bearerToken(''), undefined);
+  assert.equal(bearerToken('   '), undefined);
+  assert.equal(bearerToken(undefined), undefined);
+
+  assert.equal(bearerToken('Bearer abc123'), 'abc123');
+  assert.equal(bearerToken('bearer  abc123  '), 'abc123');
+  // Some clients send the value on its own.
+  assert.equal(bearerToken('abc123'), 'abc123');
+});
+
+void test('tokenMatches accepts only the exact token and never a missing one', () => {
+  assert.equal(tokenMatches(ADMIN_TOKEN, ADMIN_TOKEN), true);
+  assert.equal(tokenMatches(`${ADMIN_TOKEN}x`, ADMIN_TOKEN), false);
+  assert.equal(tokenMatches(ADMIN_TOKEN.slice(0, -1), ADMIN_TOKEN), false);
+  assert.equal(tokenMatches(ADMIN_TOKEN.toUpperCase(), ADMIN_TOKEN), false);
+  // A different length must be a plain false, not a thrown timingSafeEqual.
+  assert.equal(tokenMatches('x', ADMIN_TOKEN), false);
+  assert.equal(tokenMatches('', ADMIN_TOKEN), false);
+  assert.equal(tokenMatches(undefined, ADMIN_TOKEN), false);
+  // No token configured means nothing can authorise a mutation.
+  assert.equal(tokenMatches(ADMIN_TOKEN, undefined), false);
+  assert.equal(tokenMatches('', ''), false);
+  assert.equal(tokenMatches(undefined, undefined), false);
+});
+
+void test('allowAnon=false refuses every mutating route to an anonymous caller', async () => {
+  for (const route of MUTATING_ROUTES) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon: false }));
+    const { method, path, body } = mutation(route);
+
+    const result = await handle(http(method, path, { body, origin: PANEL_ORIGIN })) as HttpResult;
+
+    assert.equal(result.statusCode, 401, route);
+    assert.equal(json(result).error, 'unauthorized', route);
+    assert.equal(json(result).allowAnon, false, route);
+    assert.ok(json(result).message.includes('bearer token'), route);
+    assert.equal(result.headers?.['www-authenticate'], 'Bearer realm="diego-control"', route);
+    // Still an allow-listed origin: a 401 must not also break CORS.
+    assert.equal(result.headers?.['access-control-allow-origin'], PANEL_ORIGIN, route);
+    // Refused before a single AWS call.
+    assert.deepEqual(stub.desiredCounts, [], route);
+    assert.deepEqual(stub.rdsActions, [], route);
+    assert.deepEqual(stub.putRules, [], route);
+    assert.deepEqual(stub.removedRules, [], route);
+  }
+});
+
+void test('allowAnon=false accepts the same routes when they carry the admin token', async () => {
+  for (const route of MUTATING_ROUTES) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon: false }));
+    const { method, path, body } = mutation(route);
+
+    const result = await handle(http(method, path, {
+      body,
+      token: ADMIN_TOKEN,
+      origin: PANEL_ORIGIN,
+    })) as HttpResult;
+
+    assert.equal(result.statusCode, 200, route);
+    assert.equal(json(result).ok, true, route);
+  }
+
+  // …and the work actually happened, not just a 200.
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false }));
+  await handle(http('POST', '/power', { body: { target: 'all', state: 'off' }, token: ADMIN_TOKEN }));
+  assert.deepEqual(stub.desiredCounts, [0]);
+  assert.deepEqual(stub.rdsActions, ['stop:diego-site-db']);
+});
+
+void test('allowAnon=false refuses a wrong token, an empty bearer and a bare scheme', async () => {
+  for (const authorization of ['Bearer wrong-token', 'Bearer ', 'Bearer', '', 'Basic abc']) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon: false }));
+
+    const result = await handle(http('POST', '/power', {
+      body: { target: 'all', state: 'on' },
+      authorization,
+    })) as HttpResult;
+
+    assert.equal(result.statusCode, 401, JSON.stringify(authorization));
+    assert.deepEqual(stub.desiredCounts, [], JSON.stringify(authorization));
+  }
+});
+
+void test('allowAnon=false with no token configured cannot be talked into a mutation', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false, adminToken: undefined }));
+
+  for (const authorization of ['Bearer ', 'Bearer undefined', 'Bearer null', 'Bearer ""']) {
+    const result = await handle(http('POST', '/power', {
+      body: { target: 'all', state: 'on' },
+      authorization,
+    })) as HttpResult;
+    assert.equal(result.statusCode, 401, authorization);
+  }
+  assert.deepEqual(stub.desiredCounts, []);
+});
+
+void test('allowAnon=true lets an anonymous caller mutate, exactly as before', async () => {
+  for (const route of MUTATING_ROUTES) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon: true }));
+    const { method, path, body } = mutation(route);
+
+    const result = await handle(http(method, path, { body, origin: PANEL_ORIGIN })) as HttpResult;
+
+    assert.equal(result.statusCode, 200, route);
+    assert.equal(json(result).ok, true, route);
+  }
+});
+
+void test('read routes stay anonymous in BOTH modes', async () => {
+  for (const allowAnon of [true, false]) {
+    for (const route of READ_ROUTES) {
+      const stub = seeded();
+      const handle = createHandler(stub.deps({ allowAnon }));
+      const [method, path] = route.split(' ');
+
+      const result = await handle(http(method, path, { origin: PANEL_ORIGIN })) as HttpResult;
+
+      assert.equal(result.statusCode, 200, `${route} (allowAnon=${allowAnon})`);
+    }
+  }
+});
+
+void test('the honest 501 surfaces still explain themselves in read-only mode', async () => {
+  // A control the panel must hide is better explained than silently 401'd:
+  // these mutate nothing, so the reason is worth as much to a visitor as to
+  // an operator.
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false }));
+
+  for (const path of ['/pipelines/run', '/pipelines/approve', '/pipelines/subscribe', '/logs/query', '/drift']) {
+    const result = await handle(http('POST', path, { body: {} })) as HttpResult;
+    assert.equal(result.statusCode, 501, path);
+    assert.equal(json(result).supported, false, path);
+    assert.ok(json(result).reason.length > 0, path);
+  }
+});
+
+void test('the watchdog and the nightly lights-out run whatever allowAnon says', async () => {
+  for (const allowAnon of [true, false]) {
+    const stub = seeded();
+    stub.marker = { onSince: NOW - 200 * MINUTE };
+    const handle = createHandler(stub.deps({ allowAnon, adminToken: undefined }));
+
+    // Not an HTTP event: EventBridge invokes the function directly, and its
+    // right to do so is IAM, not a bearer token.
+    const watchdog = await handle({ mode: 'watchdog' }) as Record<string, unknown>;
+    assert.equal(watchdog.action, 'off', `allowAnon=${allowAnon}`);
+    assert.deepEqual(stub.desiredCounts, [0], `allowAnon=${allowAnon}`);
+
+    // A fresh stub: the watchdog above already left everything off.
+    const nightly = seeded();
+    const lightsOut = await createHandler(nightly.deps({ allowAnon, adminToken: undefined }))(
+      { mode: 'lights-out' },
+    ) as Record<string, unknown>;
+    assert.equal(lightsOut.action, 'off', `allowAnon=${allowAnon}`);
+    assert.deepEqual(nightly.desiredCounts, [0], `allowAnon=${allowAnon}`);
+  }
+});
+
+void test('a schedule rule firing is not gated either', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false, adminToken: undefined }));
+
+  await handle({ target: 'all', state: 'off', rule: 'diego-control-nightly' });
+
+  assert.deepEqual(stub.desiredCounts, [0]);
+  assert.equal(stub.activity[0].action, 'schedule:off');
+});
+
+void test('GET /manifest advertises allowAnon, with publicDemo as its alias', async () => {
+  for (const allowAnon of [true, false]) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon }));
+    const body = json(await handle(http('GET', '/manifest')));
+
+    assert.equal(body.allowAnon, allowAnon);
+    assert.equal(body.publicDemo, allowAnon);
+  }
+});
+
+void test('GET /manifest advertises every refused surface, so the panel never draws a control that would refuse', async () => {
+  // P4. Without this the panel renders Run / Check drift / Subscribe, the
+  // visitor clicks, and only then learns the plane will not do it.
+  for (const allowAnon of [true, false]) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon }));
+    const body = json(await handle(http('GET', '/manifest')));
+    const surfaces = body.surfaces as Record<string, { supported: boolean; reason: string }>;
+
+    // Keyed by PATH, exactly as the panel's `reason(path)` looks them up.
+    for (const path of ['/pipelines/run', '/pipelines/approve', '/pipelines/subscribe', '/pipelines/subscriptions', '/logs/query', '/drift']) {
+      assert.equal(surfaces[path]?.supported, false, `${path} should be advertised as unsupported`);
+      assert.ok((surfaces[path]?.reason ?? '').length > 40, `${path} should carry the API's own reason`);
+    }
+    // Implemented routes are absent from the map — their controls stay.
+    assert.equal(surfaces['/pipelines'], undefined);
+    assert.equal(surfaces['/power'], undefined);
+    assert.equal(surfaces['/rules'], undefined);
+    // The reasons are the same text the 501 bodies carry.
+    assert.equal(surfaces['/drift'].reason, json(await handle(http('POST', '/drift'))).reason);
+  }
+});
+
+void test('GET /manifest advertises /pipelines itself when nothing was allow-listed', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ pipelines: [] }));
+  const surfaces = json(await handle(http('GET', '/manifest'))).surfaces as Record<string, { reason: string }>;
+
+  assert.equal(surfaces['/pipelines'].reason, json(await handle(http('GET', '/pipelines'))).reason);
+});
+
+void test('advertisedSurfaces collapses METHOD /path to the path the panel keys on', () => {
+  const surfaces = advertisedSurfaces();
+  for (const key of Object.keys(surfaces)) {
+    assert.ok(key.startsWith('/'), `${key} should be a bare path`);
+    assert.equal(surfaces[key].supported, false);
+  }
+});
+
+void test('GET /manifest never inherits a stale publicDemo from the baked manifest', async () => {
+  // MANIFEST is captured at synth time; ALLOW_ANON is the authority. A
+  // manifest that still said `publicDemo: true` must not out-vote the gate.
+  const stub = seeded();
+  const handle = createHandler(stub.deps({
+    allowAnon: false,
+    manifest: { ...manifest, allowAnon: true, publicDemo: true },
+  }));
+
+  const body = json(await handle(http('GET', '/manifest')));
+  assert.equal(body.allowAnon, false);
+  assert.equal(body.publicDemo, false);
+});
+
+void test('GET /status reports the same flag as GET /manifest', async () => {
+  for (const allowAnon of [true, false]) {
+    const stub = seeded();
+    const handle = createHandler(stub.deps({ allowAnon }));
+    const body = json(await handle(http('GET', '/status')));
+
+    assert.equal(body.demo.allowAnon, allowAnon);
+    assert.equal(body.demo.publicDemo, allowAnon);
+  }
+});
+
+void test('a refused mutation is audited with a hashed actor and never the token', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false }));
+
+  await handle(http('POST', '/power', { body: { target: 'all', state: 'on' } }));
+  await handle(http('POST', '/power', { body: { target: 'all', state: 'on' }, token: 'not-the-token' }));
+
+  const [withToken, withoutToken] = stub.activity;
+  assert.equal(withoutToken.action, 'auth:denied');
+  assert.equal(withoutToken.result, 'rejected: no token');
+  assert.equal(withoutToken.target, 'POST /power');
+  assert.ok(withoutToken.actor.startsWith('visitor-'));
+  assert.equal(withToken.result, 'rejected: invalid token');
+
+  const feed = JSON.stringify(stub.activity);
+  assert.ok(!feed.includes('not-the-token'));
+  assert.ok(!feed.includes(ADMIN_TOKEN));
+});
+
+void test('no response ever echoes the admin token', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false }));
+
+  const bodies: string[] = [];
+  for (const route of [...READ_ROUTES, ...MUTATING_ROUTES]) {
+    const [method, path] = route.split(' ');
+    const anonymous = await handle(http(method, path, { body: MUTATION_BODIES[route] })) as HttpResult;
+    const authenticated = await handle(http(method, path, {
+      body: MUTATION_BODIES[route],
+      token: ADMIN_TOKEN,
+    })) as HttpResult;
+    bodies.push(anonymous.body ?? '', authenticated.body ?? '');
+  }
+
+  for (const body of bodies) assert.ok(!body.includes(ADMIN_TOKEN));
+});
+
+void test('OPTIONS preflight is never gated — a browser attaches no credentials to it', async () => {
+  const stub = seeded();
+  const handle = createHandler(stub.deps({ allowAnon: false }));
+
+  const result = await handle(http('OPTIONS', '/power', { origin: PANEL_ORIGIN })) as HttpResult;
+
+  assert.equal(result.statusCode, 204);
+  assert.equal(result.headers?.['access-control-allow-origin'], PANEL_ORIGIN);
 });

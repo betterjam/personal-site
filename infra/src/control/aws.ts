@@ -8,6 +8,9 @@ import {
   EcsPort,
   EcsServiceState,
   Manifest,
+  PipelineExecutionSummary,
+  PipelinePort,
+  PipelineStateSnapshot,
   PowerMarker,
   RdsPort,
   ScheduleRule,
@@ -37,6 +40,7 @@ let ecsClient: AnyClient | undefined;
 let rdsClient: AnyClient | undefined;
 let schedulerClient: AnyClient | undefined;
 let dynamoClient: AnyClient | undefined;
+let codePipelineClient: AnyClient | undefined;
 
 function ecsSdk() {
   const sdk = require('@aws-sdk/client-ecs');
@@ -62,6 +66,18 @@ function dynamoSdk() {
   return { sdk, client: dynamoClient! };
 }
 
+function codePipelineSdk() {
+  const sdk = require('@aws-sdk/client-codepipeline');
+  codePipelineClient ??= new sdk.CodePipelineClient({});
+  return { sdk, client: codePipelineClient! };
+}
+
+/** `a, b,,c` -> `['a','b','c']`, de-duplicated and order-preserving. */
+function splitList(raw: string | undefined): string[] {
+  const parts = (raw ?? '').split(',').map((value) => value.trim()).filter(Boolean);
+  return [...new Set(parts)];
+}
+
 /** Parse and validate the environment the stack hands to the function. */
 export function parseEnv(raw: NodeJS.ProcessEnv = process.env): ControlEnv {
   const manifest = JSON.parse(raw.MANIFEST ?? '{"env":"prod","app":"diego-site","resources":[]}') as Manifest;
@@ -73,11 +89,27 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): ControlEnv {
     rulePrefix: raw.RULE_PREFIX ?? 'diego-control-',
     maxRules: numberOr(raw.MAX_RULES, 10),
     maxOnMinutes: numberOr(raw.MAX_ON_MINUTES, 180),
-    allowedOrigins: (raw.ALLOWED_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
+    allowedOrigins: splitList(raw.ALLOWED_ORIGINS),
+    // The pipeline allow-list. Empty (the default) means `GET /pipelines`
+    // reports nothing at all — it never falls back to listing the account.
+    pipelines: splitList(raw.PIPELINES),
     actorSalt: raw.ACTOR_SALT ?? 'diego-control',
     timezone: raw.TIMEZONE ?? 'America/Santiago',
     panelUrl: raw.PANEL_URL || undefined,
     siteUrl: raw.SITE_URL || undefined,
+    /*
+     * G8 — fail closed.
+     *
+     * Only the exact string 'true' opts anonymous callers into mutating.
+     * Missing, empty, 'True', 'yes', or anything else leaves the mutating
+     * routes behind the bearer token: a typo in the environment must not be
+     * able to open the write surface. The stack validates the context value
+     * at synth time as well, so 'yes' never reaches here in the first place.
+     */
+    allowAnon: raw.ALLOW_ANON === 'true',
+    // Injected by CloudFormation from this stack's own Secrets Manager
+    // secret. Absent means no mutation can be authorised at all.
+    adminToken: raw.ADMIN_TOKEN || undefined,
   };
 }
 
@@ -142,6 +174,68 @@ const rdsPort: RdsPort = {
     await client.send(new sdk.StopDBInstanceCommand({ DBInstanceIdentifier: instanceId }));
   },
 };
+
+/**
+ * CodePipeline, read-only and one named pipeline at a time.
+ *
+ * Note what is NOT here: no `ListPipelinesCommand` (that would enumerate an
+ * account which also runs production pipelines), no `StartPipelineExecution`,
+ * no `PutApprovalResult`. The role's policy is scoped to the allow-listed
+ * pipeline ARNs and the boundary denies the rest, so those calls would fail
+ * anyway — this module simply never makes them.
+ *
+ * The mapping also drops two fields the API returns: the approval `token` of a
+ * waiting manual-approval action (a bearer credential) and
+ * `externalExecutionUrl` (a console link carrying the account id).
+ */
+const pipelinePort: PipelinePort = {
+  async state(name: string): Promise<PipelineStateSnapshot | undefined> {
+    const { sdk, client } = codePipelineSdk();
+    const out = await client.send(new sdk.GetPipelineStateCommand({ name }));
+    if (!out?.pipelineName) return undefined;
+    return {
+      name: out.pipelineName,
+      stages: (out.stageStates ?? []).map((stage: any) => ({
+        name: stage.stageName,
+        status: stage.latestExecution?.status,
+        actions: (stage.actionStates ?? []).map((action: any) => {
+          const execution = action.latestExecution ?? {};
+          return {
+            name: action.actionName,
+            status: execution.status,
+            lastStatusChange: isoOrUndefined(execution.lastStatusChange),
+            // Only a FAILED action's text is carried across. `summary` on a
+            // successful source action is the commit message, and nothing here
+            // should be one bad edit away from publishing that.
+            errorMessage: execution.status === 'Failed'
+              ? (execution.errorDetails?.message ?? execution.summary)
+              : undefined,
+          };
+        }),
+      })),
+    };
+  },
+
+  async executions(name: string, limit: number): Promise<PipelineExecutionSummary[]> {
+    const { sdk, client } = codePipelineSdk();
+    const out = await client.send(new sdk.ListPipelineExecutionsCommand({ pipelineName: name, maxResults: limit }));
+    return (out.pipelineExecutionSummaries ?? []).map((execution: any) => ({
+      id: execution.pipelineExecutionId,
+      status: execution.status,
+      startTime: isoOrUndefined(execution.startTime),
+      // `statusSummary` explains a stop/supersede. `sourceRevisions` is
+      // deliberately not read: it carries commit messages and author trailers,
+      // which is more than a pipeline status page needs to say in public.
+      summary: execution.status === 'Succeeded' ? undefined : execution.statusSummary,
+    }));
+  },
+};
+
+function isoOrUndefined(value: string | Date | undefined): string | undefined {
+  if (!value) return undefined;
+  const ms = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
+}
 
 function schedulePort(env: ControlEnv): SchedulePort {
   const group = env.scheduleGroup;
@@ -295,6 +389,7 @@ export function liveDeps(raw: NodeJS.ProcessEnv = process.env): Deps {
     rds: rdsPort,
     schedules: schedulePort(env),
     activity: activityPort(raw.ACTIVITY_TABLE ?? 'diego-control-activity', now, id),
+    pipelines: pipelinePort,
     now,
     id,
   };

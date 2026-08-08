@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   ActivityEntry,
   ControlEnv,
@@ -9,6 +9,8 @@ import {
   HttpResult,
   Manifest,
   ManifestResource,
+  PipelineRunView,
+  PipelineView,
   PowerResult,
   PowerState,
   ScheduleRule,
@@ -17,14 +19,28 @@ import {
 /**
  * The control plane for diegopalominos.dev — the public playground.
  *
- * Anyone on the internet may call the read endpoints, flip the site on/off
- * and add a schedule: that IS the demo ("it's like turning lights on or
- * off"). Everything dangerous is therefore removed rather than guarded by a
- * password:
+ * Anyone on the internet may call the READ endpoints. Whether an anonymous
+ * caller may also MUTATE is one deliberate boolean, `allowAnon` (G8):
+ *
+ * - `allowAnon: false` (the DEFAULT) — every mutating route requires a bearer
+ *   token; reads stay anonymous. A panel with no token renders the whole
+ *   thing read-only, which is what a private deployment wants.
+ * - `allowAnon: true` — anonymous mutation is on, because that IS the demo
+ *   ("it's like turning lights on or off"). Nothing else changes: still
+ *   throttled, still watchdog-capped, still audited with a hashed actor.
+ *
+ * The flag is enforced HERE, in the handler, not merely rendered by the
+ * panel: a UI that hides a button is a hint, and this is the boundary.
+ *
+ * Everything dangerous is removed rather than guarded by a password, so that
+ * `allowAnon: true` stays defensible:
  *
  * - the only mutation on ECS is `desiredCount` clamped to 0 or 1 (G2) — there
  *   is no scale, no delete, no deploy endpoint anywhere in this file;
  * - the only mutation on RDS is start/stop of ONE instance;
+ * - the pipeline surface is READ-ONLY and allow-listed: `GET /pipelines`
+ *   reports the named pipelines it was handed and nothing else, and run /
+ *   approve / subscribe are refused honestly (P1-P3, below);
  * - schedules live in a dedicated group, are name-prefixed and capped (G5);
  * - every action is written to a DynamoDB feed with a hashed IP prefix as the
  *   actor — never a raw IP (G7);
@@ -48,24 +64,43 @@ export const SKIPPED_SURFACES: Record<string, SkippedSurface> = {
       + 'permission, so visitor traffic can never read application logs.',
     empty: { events: [] },
   },
-  'GET /pipelines': {
-    reason: 'Pipelines are driven from the private ops panel. The public control plane has no codepipeline permissions.',
-    empty: { pipelines: [] },
-  },
+  /*
+   * P1 — the pipeline surface is read-only.
+   *
+   * `GET /pipelines` IS implemented (see the route below): the panel shows this
+   * stack's own pipeline, its stages and its last few runs. Everything that
+   * would let a stranger CHANGE something stays refused, and the refusal says
+   * why rather than pretending the button worked. The panel renders Run and
+   * Approve regardless — these payloads are what those buttons hit.
+   *
+   * These are not just unimplemented handlers: the role has no
+   * `codepipeline:StartPipelineExecution` / `PutApprovalResult` / `sns:*`
+   * permission at all, and the permissions boundary denies them explicitly, so
+   * wiring one up later takes a deliberate change in two more places.
+   */
   'POST /pipelines/run': {
-    reason: 'Starting a deployment is not a visitor action. Use the private ops panel.',
+    reason: 'This control plane is a read-only public demo: it can show a pipeline\'s state, never start one. '
+      + 'Nobody should be able to trigger a deployment from an anonymous page, so the Lambda holds no '
+      + 'codepipeline:StartPipelineExecution permission and its IAM boundary denies it. Deployments run from the '
+      + 'private ops panel.',
     empty: {},
   },
   'POST /pipelines/approve': {
-    reason: 'Approvals are not a visitor action. Use the private ops panel.',
+    reason: 'This control plane is a read-only public demo: approval gates cannot be actioned from it. '
+      + 'The Lambda holds no codepipeline:PutApprovalResult permission and its IAM boundary denies it — an anonymous '
+      + 'visitor must never be able to wave a deployment through. Approve from the private ops panel.',
     empty: {},
   },
   'GET /pipelines/subscriptions': {
-    reason: 'Notification subscriptions are managed in the private ops panel.',
+    reason: 'This control plane is a read-only public demo and keeps no subscriber list: publishing the addresses '
+      + 'signed up for pipeline notifications on an anonymous page would leak them. Subscriptions live in the '
+      + 'private ops panel.',
     empty: { subscriptions: [] },
   },
   'POST /pipelines/subscribe': {
-    reason: 'Notification subscriptions are managed in the private ops panel.',
+    reason: 'This control plane is a read-only public demo: it will not sign an email address up for anything. '
+      + 'An anonymous endpoint that emails any address handed to it is a spam relay, so there is no SNS topic and no '
+      + 'sns:Subscribe permission here. Subscribe from the private ops panel.',
     empty: {},
   },
   'POST /drift': {
@@ -75,11 +110,66 @@ export const SKIPPED_SURFACES: Record<string, SkippedSurface> = {
   },
 };
 
+/**
+ * P4 — the refusals, advertised up front on `GET /manifest`.
+ *
+ * `SKIPPED_SURFACES` already answers every unimplemented route with
+ * `{ supported: false, reason }`, but only once something CALLS it — which
+ * means a panel renders "Run", "Check drift" or "Subscribe", the visitor
+ * clicks, and the button explains itself afterwards. A control that refuses
+ * is worse than an explained absence, so the manifest says the same thing
+ * before the first paint and the panel simply never draws those controls.
+ *
+ * Keyed by PATH rather than `METHOD /path`: a surface is one idea to a panel
+ * ("can this plane approve?"), not one HTTP verb. Where two methods share a
+ * path the reason is the same anyway.
+ *
+ * This is a READ, and identical in both `allowAnon` modes — a read-only
+ * visitor deserves the explanation exactly as much as an authenticated one.
+ */
+export function advertisedSurfaces(): Record<string, { supported: false; reason: string }> {
+  const surfaces: Record<string, { supported: false; reason: string }> = {};
+  for (const [route, skipped] of Object.entries(SKIPPED_SURFACES)) {
+    const path = route.slice(route.indexOf(' ') + 1);
+    surfaces[path] ??= { supported: false, reason: skipped.reason };
+  }
+  return surfaces;
+}
+
 /** `cron(<min> <hour> ? * <days> *)` — the only expression the panel emits. */
 export const CRON_PATTERN = /^cron\(\s*([0-5]?\d)\s+([01]?\d|2[0-3])\s+\?\s+\*\s+(\*|[A-Z]{3}(-[A-Z]{3})?|[A-Z]{3}(,[A-Z]{3})*)\s+\*\s*\)$/;
 
 /** 30 days, in seconds — the activity feed's TTL horizon (G7). */
 export const ACTIVITY_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * P2 — how long a pipeline snapshot is served from memory.
+ *
+ * The panel polls, several visitors can poll at once, and CodePipeline's
+ * describe APIs are throttled per account — an account that also runs
+ * production pipelines. 45s is short enough that the panel still feels live
+ * (a deploy takes minutes) and long enough that a page left open overnight
+ * costs a couple of API calls a minute at most.
+ */
+export const PIPELINE_CACHE_TTL_MS = 45_000;
+
+/** Runs shown per pipeline (`ListPipelineExecutions`). */
+export const PIPELINE_HISTORY_LIMIT = 5;
+
+/** A failure message is a diagnostic, not a log dump: keep it readable. */
+export const FAILURE_MAX_LENGTH = 300;
+
+/** Answer when this control plane was given no pipelines to report on. */
+export const NO_PIPELINES_REASON =
+  'No pipeline is exposed to this control plane. It reports only the pipelines it is explicitly handed (today: the '
+  + 'one that deploys this site) and never lists the account, because the account also runs unrelated production '
+  + 'pipelines whose names must not appear on a public page.';
+
+/** Trim a failure message to something a panel row can carry. */
+export function truncateFailure(message: string, max: number = FAILURE_MAX_LENGTH): string {
+  const clean = message.replace(/\s+/g, ' ').trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
 
 /**
  * The single most important guardrail (G2): a visitor may ask for "on" or
@@ -136,6 +226,68 @@ export function corsHeaders(origin: string | undefined, allowed: string[]): Reco
     'access-control-allow-headers': 'authorization,content-type',
     'access-control-max-age': '600',
   };
+}
+
+/*
+ * ── G8: anonymous mutation is opt-in ────────────────────────────────────
+ *
+ * These four routes CHANGE something. When `allowAnon` is false each of them
+ * requires the bearer token; every other route — `/manifest`, `/status`,
+ * `/diagram`, `/diag`, `/activity`, `/pipelines`, `GET /rules` — stays
+ * anonymous in both modes, because reading is what makes the panel worth
+ * showing a stranger at all.
+ *
+ * The stack imports this list to build its per-route throttles, so the routes
+ * that are rate-limited and the routes that are gated cannot drift apart.
+ */
+export const MUTATING_ROUTES: readonly string[] = [
+  'POST /power',
+  'POST /rules',
+  'POST /rules/delete',
+  'POST /rules/toggle',
+];
+
+/**
+ * Why a mutation was refused. Honest about the mode, and silent about the
+ * token: it never says whether one was configured, only what the caller has
+ * to do.
+ */
+export const UNAUTHORIZED_MESSAGE =
+  'This control plane is read-only for anonymous callers: reading the status, the diagram, the schedules and the '
+  + 'activity feed needs nothing, but changing anything needs a bearer token. Add one in the panel\'s Manage card, or '
+  + 'redeploy with -c allowAnon=true if this deployment is meant to let anyone flip the lights.';
+
+/**
+ * The bearer token a request presents, or undefined when it presents none.
+ *
+ * `Authorization: Bearer ` with an empty value — which is exactly what the
+ * panel used to send unconditionally — is NOT a token. Neither is a bare
+ * `Bearer`. A raw value with no scheme is accepted, since some clients send
+ * the token alone.
+ */
+export function bearerToken(authorization: string | undefined): string | undefined {
+  const raw = (authorization ?? '').trim();
+  if (!raw) return undefined;
+  const value = raw.replace(/^Bearer\s*/i, '').trim();
+  return value || undefined;
+}
+
+/**
+ * Compare a presented token with the configured one without leaking timing.
+ *
+ * Both sides are hashed first, then compared with `timingSafeEqual`. Hashing
+ * is what makes that possible at all: `timingSafeEqual` throws on a length
+ * mismatch, so comparing the raw strings would need a length check that
+ * itself tells an attacker how long the secret is. Digests are always 32
+ * bytes, so the comparison is over a fixed width and reveals neither the
+ * length nor the position of the first differing byte.
+ *
+ * No token configured, or none presented, is a plain false — never a match.
+ */
+export function tokenMatches(presented: string | undefined, expected: string | undefined): boolean {
+  if (!presented || !expected) return false;
+  const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest();
+  return timingSafeEqual(digest(presented), digest(expected));
 }
 
 /** Visitor rule names are slugged and prefixed so they can never collide (G5/F5). */
@@ -491,6 +643,110 @@ export function createHandler(deps: Deps) {
     return { nodes, edges: env.diagram.edges };
   }
 
+  /*
+   * ── pipelines (read-only, allow-listed) ──────────────────────────────
+   *
+   * P3 — the allow-list is the whole design.
+   *
+   * `env.pipelines` is the list of pipeline names the stack handed this
+   * function (its own, today). The handler iterates THAT list — it never asks
+   * AWS what pipelines exist, and `deps.pipelines` has no operation that
+   * could. A response is dropped unless the name AWS echoes back is on the
+   * list too, so a mis-wired or mischievous port cannot smuggle a production
+   * pipeline onto a public page.
+   */
+
+  /** Cached snapshot; see PIPELINE_CACHE_TTL_MS. Warm containers only. */
+  let pipelineCache: { at: number; value: PipelineView[] } | undefined;
+
+  async function pipelineView(name: string): Promise<PipelineView | undefined> {
+    const snapshot = await deps.pipelines.state(name);
+    if (!snapshot) return undefined;
+    // The allow-list, re-checked on the way out (see P3).
+    if (!env.pipelines.includes(snapshot.name)) {
+      console.error('dropping a pipeline that is not on the allow-list');
+      return undefined;
+    }
+
+    let updated: number | undefined;
+    let failure: string | undefined;
+    const stages = snapshot.stages.map((stage) => {
+      for (const action of stage.actions ?? []) {
+        const changed = action.lastStatusChange ? Date.parse(action.lastStatusChange) : Number.NaN;
+        if (Number.isFinite(changed) && (updated === undefined || changed > updated)) updated = changed;
+        if (!failure && action.status === 'Failed' && action.errorMessage) {
+          failure = truncateFailure(action.errorMessage);
+        }
+        /*
+         * A waiting manual-approval action is deliberately NOT reported.
+         *
+         * The panel would render "Awaiting approval" with Approve/Reject
+         * buttons, and those buttons cannot work here: approving is a
+         * mutation, this plane is read-only, and `POST /pipelines/approve`
+         * refuses. Advertising a gate that a visitor can see but not action —
+         * and doing it with the approval TOKEN in the JSON, where anyone
+         * could take it to the CLI — is worse than staying quiet. So there is
+         * no `pendingApproval` in the response, and `PipelineActionState` has
+         * no field for the token in the first place.
+         */
+      }
+      return { name: stage.name, status: stage.status ?? 'Unknown' };
+    });
+
+    let history: PipelineRunView[] = [];
+    try {
+      const executions = await deps.pipelines.executions(name, PIPELINE_HISTORY_LIMIT);
+      history = executions.slice(0, PIPELINE_HISTORY_LIMIT).map((execution) => ({
+        status: execution.status ?? 'Unknown',
+        when: execution.startTime ?? '',
+        ...(execution.id ? { id: execution.id.slice(0, 8) } : {}),
+        ...(execution.summary ? { summary: truncateFailure(execution.summary) } : {}),
+      }));
+    } catch (err) {
+      // History is a nice-to-have; the stage row is the point.
+      console.error('pipeline history read failed', errorName(err));
+    }
+
+    // A pipeline that has not moved since the last cold start still deserves a
+    // timestamp: fall back to its newest run.
+    if (updated === undefined) {
+      const newest = history.map((run) => Date.parse(run.when)).filter((ms) => Number.isFinite(ms));
+      if (newest.length) updated = Math.max(...newest);
+    }
+
+    // No `logUrl` either: CodePipeline's externalExecutionUrl is a console deep
+    // link carrying the account id and the CodeBuild project/build ids, and a
+    // console link is useless to an anonymous visitor who cannot sign in.
+    return {
+      name: snapshot.name,
+      ...(updated === undefined ? {} : { updated: new Date(updated).toISOString() }),
+      stages,
+      ...(failure ? { failure } : {}),
+      history,
+    };
+  }
+
+  /** `GET /pipelines` — the allow-listed pipelines, cached briefly (P2). */
+  async function pipelines(): Promise<PipelineView[]> {
+    const at = deps.now();
+    if (pipelineCache && at - pipelineCache.at < PIPELINE_CACHE_TTL_MS) return pipelineCache.value;
+
+    const views: PipelineView[] = [];
+    for (const name of env.pipelines) {
+      try {
+        const view = await pipelineView(name);
+        if (view) views.push(view);
+      } catch (err) {
+        // One unreadable pipeline must not 500 the page — and caching the
+        // (possibly empty) result also keeps a failure from turning the
+        // panel's polling into a retry storm against CodePipeline.
+        console.error('pipeline state read failed', name, err);
+      }
+    }
+    pipelineCache = { at, value: views };
+    return views;
+  }
+
   /** `GET /diag`: exercise every capability and report honestly (panel shape). */
   async function diag(): Promise<Array<Record<string, unknown>>> {
     const checks: Array<Record<string, unknown>> = [];
@@ -514,14 +770,28 @@ export function createHandler(deps: Deps) {
     }
     await run('Scheduling rules', () => deps.schedules.list());
     await run('Activity log', () => deps.activity.recent(1));
+    if (env.pipelines.length > 0) {
+      // Reads the FIRST allow-listed pipeline by name — never a listing.
+      await run('Pipelines (read-only)', () => deps.pipelines.state(env.pipelines[0]));
+    } else {
+      checks.push({ name: 'Pipelines (read-only)', ok: false, skipped: true, error: NO_PIPELINES_REASON });
+    }
     checks.push({ name: 'Logs explorer', ok: false, skipped: true, error: SKIPPED_SURFACES['POST /logs/query'].reason });
-    checks.push({ name: 'Pipelines', ok: false, skipped: true, error: SKIPPED_SURFACES['GET /pipelines'].reason });
     checks.push({ name: 'Drift detection', ok: false, skipped: true, error: SKIPPED_SURFACES['POST /drift'].reason });
     return checks;
   }
 
   return async function handle(event: ControlEvent): Promise<HttpResult | Record<string, unknown>> {
-    // ── non-HTTP invocations: watchdog, nightly lights-out, schedule rules ──
+    /*
+     * ── non-HTTP invocations: watchdog, nightly lights-out, schedule rules ──
+     *
+     * These return BEFORE the G8 token gate, and must keep doing so. They do
+     * not arrive over HTTP and carry no `authorization` header: EventBridge
+     * invokes the function directly, and its right to do so is IAM, not a
+     * bearer token. Gating them would mean the auto-off watchdog stops
+     * working the moment `allowAnon` is false — the cost fence would be
+     * disabled by the security setting.
+     */
     if (!event.requestContext?.http) {
       if (event.mode === 'watchdog' || event.mode === 'lights-out') return watchdog(event.mode);
       return scheduledAction(event);
@@ -534,21 +804,76 @@ export function createHandler(deps: Deps) {
     const headers = corsHeaders(origin, env.allowedOrigins);
     const actor = hashActor(event.requestContext.http.sourceIp, env.actorSalt);
 
+    // Preflight is answered before the gate: a browser never attaches
+    // credentials to it, so a 401 here would break CORS rather than secure it.
     if (method === 'OPTIONS') return { statusCode: 204, headers };
 
-    // Anonymous by design: this playground has no token. The panel always
-    // sends `authorization`, which is simply ignored — so it works unmodified.
+    /*
+     * G8 — the gate.
+     *
+     * Reads fall straight through. A mutation needs either `allowAnon` or a
+     * matching bearer token; anything else is refused here, before a single
+     * AWS call is made and before the body is even looked at.
+     *
+     * The 501 surfaces (`POST /pipelines/run`, `/pipelines/approve`,
+     * `/pipelines/subscribe`, `/logs/query`, `/drift`) are deliberately NOT
+     * gated. They mutate nothing — they refuse, with a reason the panel shows
+     * where the control would have been — and that explanation is worth just
+     * as much to a read-only visitor as to an authenticated one.
+     */
+    if (!env.allowAnon && MUTATING_ROUTES.includes(route)) {
+      const presented = bearerToken(header(event, 'authorization'));
+      if (!tokenMatches(presented, env.adminToken)) {
+        await record({
+          at: new Date(deps.now()).toISOString(),
+          action: 'auth:denied',
+          actor,
+          // Says which of the two it was, never anything about the token itself.
+          result: presented ? 'rejected: invalid token' : 'rejected: no token',
+          target: route,
+        });
+        return json(401, {
+          ok: false,
+          error: 'unauthorized',
+          message: UNAUTHORIZED_MESSAGE,
+          allowAnon: false,
+        }, { ...headers, 'www-authenticate': 'Bearer realm="diego-control"' });
+      }
+    }
+
     const body = parseBody(event);
 
     try {
       if (route === 'GET /manifest') {
         return json(200, {
           ...env.manifest,
-          publicDemo: true,
+          /*
+           * G8 — the panel reads its mode from here.
+           *
+           * `ALLOW_ANON` wins over whatever was baked into MANIFEST at synth
+           * time (the stack sets both from one value, so they agree), and
+           * `publicDemo` is kept as an alias for panels built before the flag
+           * existed. Never a hardcoded `true` again.
+           */
+          allowAnon: env.allowAnon,
+          publicDemo: env.allowAnon,
           maxOnMinutes: env.maxOnMinutes,
           maxRules: env.maxRules,
           panelUrl: env.panelUrl,
           siteUrl: env.siteUrl,
+          /*
+           * P4 — what this plane will NOT do, said before anyone tries.
+           *
+           * `GET /pipelines` joins the list only when no pipeline was
+           * allow-listed, because that is the one case where the route itself
+           * answers 501 (see below).
+           */
+          surfaces: {
+            ...advertisedSurfaces(),
+            ...(env.pipelines.length === 0
+              ? { '/pipelines': { supported: false as const, reason: NO_PIPELINES_REASON } }
+              : {}),
+          },
         }, headers);
       }
 
@@ -558,7 +883,8 @@ export function createHandler(deps: Deps) {
         return json(200, {
           services,
           demo: {
-            publicDemo: true,
+            allowAnon: env.allowAnon,
+            publicDemo: env.allowAnon,
             anyOn,
             onSince: onSince ? new Date(onSince).toISOString() : undefined,
             onForMinutes: onFor === undefined ? undefined : Math.round(onFor / 60_000),
@@ -656,6 +982,13 @@ export function createHandler(deps: Deps) {
           target: rule.target,
         });
         return json(200, { ok: true, name, enabled }, headers);
+      }
+
+      if (route === 'GET /pipelines') {
+        if (env.pipelines.length === 0) {
+          return json(501, { supported: false, reason: NO_PIPELINES_REASON, pipelines: [] }, headers);
+        }
+        return json(200, { pipelines: await pipelines() }, headers);
       }
 
       if (route === 'GET /diagram') return json(200, await diagram(), headers);
