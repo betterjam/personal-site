@@ -1,0 +1,192 @@
+/* ============================================================
+   SCROLL HINT — floating "what the next scroll does" chip,
+   bottom-centre of the viewport. Sibling of the right-edge
+   scroll indicator (scrollIndicator.css): that one says where
+   you ARE, this one says what happens NEXT — so they must
+   never share space. The indicator hugs the right edge at mid
+   height and is hidden below 900px; this chip is centred at
+   the bottom and capped so its half-width can never reach the
+   indicator column.
+   Tokens only: chip translucency rides var(--mx-stage) (the
+   body token), the kicker and the focus ring ride
+   var(--mx-accent), and --sh-ink is the neutral computed in JS
+   from the active view's stage luminance — no literal palette
+   hex here.
+   z-order: with the indicator (150) — above the deck views and
+   the rail (100), below the fx canvas (900), the overlays
+   (blog 950 / pageRoom 955 / maintain 960) and the cursor.
+   ============================================================ */
+.mx-sh {
+  position: fixed;
+  left: 50%;
+  translate: -50% 0; /* independent of `transform`, which GSAP owns */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(0.9rem, 3.2vh, 1.9rem));
+  z-index: 150;
+  display: flex;
+  justify-content: center;
+  max-width: min(26rem, calc(100vw - 2rem));
+  opacity: 0; /* GSAP owns visibility from here on */
+  visibility: hidden;
+  pointer-events: none; /* the chip floats over content — only the button takes input */
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+/* ---------- the chip: a real button doing what the scroll does ---------- */
+.mx-sh-btn {
+  pointer-events: auto;
+  display: grid;
+  justify-items: center;
+  gap: 0.24rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.5rem 0.95rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mx-stage) 62%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--sh-ink, currentColor) 14%, transparent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14); /* neutral overlay only */
+  color: color-mix(in srgb, var(--sh-ink, currentColor) 78%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+.mx-sh-btn:hover {
+  color: var(--sh-ink, currentColor);
+  border-color: color-mix(in srgb, var(--mx-accent) 55%, transparent);
+}
+.mx-sh-btn:focus-visible {
+  outline: 2px solid var(--mx-accent, currentColor);
+  outline-offset: 3px;
+}
+
+/* ---------- line one: the quiet invitation ---------- */
+.mx-sh-lead {
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.72;
+}
+
+/* ---------- line two: kicker + chevron + destination ---------- */
+.mx-sh-dest {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+.mx-sh-kicker {
+  flex: none;
+  color: var(--mx-accent);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.mx-sh-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sh-ink, currentColor);
+}
+
+/* chevron drawn from borders, tinted by the chip ink — the wrap does the
+   bobbing so the glyph keeps its own rotation */
+.mx-sh-chev-wrap {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+}
+.mx-sh-chev {
+  width: 5px;
+  height: 5px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(135deg) translate(-1px, 1px); /* points down */
+}
+.mx-sh.is-up .mx-sh-chev {
+  transform: rotate(-45deg) translate(1px, 1px); /* points up */
+}
+
+/* ---------- the idle nudge: a small repeating bob, invitation-sized ----- */
+.mx-sh.is-live .mx-sh-chev-wrap {
+  animation: mx-sh-bob 2s ease-in-out infinite;
+}
+.mx-sh.is-live.is-up .mx-sh-chev-wrap {
+  animation-name: mx-sh-bob-up;
+}
+@keyframes mx-sh-bob {
+  0%,
+  100% {
+    transform: translateY(-1px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+@keyframes mx-sh-bob-up {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* ---------- desktop: stay out of the scroll indicator's column ---------- */
+@media (min-width: 900px) {
+  .mx-sh {
+    /* the indicator hugs the right edge (clamp(10px, 2vw, 22px)) and its
+       hints run up to 11rem wide; keep both flanks of the centred chip
+       short of that column at every width */
+    max-width: min(26rem, calc(100vw - 2 * (11rem + 4vw)));
+  }
+}
+
+/* ---------- mobile: compact, and clear of the browser's bottom UI ------- */
+@media (max-width: 899px) {
+  .mx-sh {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(1.1rem, 4.5vh, 2.2rem));
+    max-width: min(22rem, calc(100vw - 1.6rem));
+  }
+  .mx-sh-btn {
+    gap: 0.18rem;
+    padding: 0.42rem 0.8rem 0.46rem;
+  }
+  .mx-sh-lead {
+    font-size: 0.52rem;
+    letter-spacing: 0.14em;
+  }
+  .mx-sh-dest {
+    font-size: 0.64rem;
+  }
+}
+/* very small screens: the destination line carries the whole message */
+@media (max-width: 560px) {
+  .mx-sh-lead {
+    display: none;
+  }
+}
+
+/* ---------- motion off: no bob, no easing, no slide (JS drops the
+     fade-in tween for a plain set) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .mx-sh.is-live .mx-sh-chev-wrap,
+  .mx-sh.is-live.is-up .mx-sh-chev-wrap {
+    animation: none;
+  }
+  .mx-sh-btn {
+    transition: none;
+  }
+}

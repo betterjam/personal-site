@@ -13,11 +13,15 @@
  *
  * No hardcoded palette hex: the chip translucency rides var(--mx-stage)
  * (the body token), the pill rides var(--mx-accent), and the neutral ink
- * is computed here per active view from lum(view.stage) and pushed as
- * --si-ink on the capsule root.
+ * comes from inkOn(view.stage) (themes.ts — the shared luminance flip the
+ * scroll hint uses too), pushed as --si-ink on the capsule root.
+ *
+ * Sibling affordance: scrollHint.ts. This one says where you ARE; the
+ * hint says what the NEXT scroll will do. Both are driven from the same
+ * deck callbacks so they can never disagree.
  */
 import { gsap } from 'gsap';
-import { lum } from './themes';
+import { inkOn } from './themes';
 import '../styles/scrollIndicator.css';
 
 export interface ScrollIndicatorView {
@@ -44,9 +48,6 @@ export interface ScrollIndicator {
   reveal(): void;
   destroy(): void;
 }
-
-/** Stage luminance where white ink stops beating black ink (WCAG). */
-const INK_FLIP = 0.18;
 
 interface Hint {
   root: HTMLDivElement;
@@ -134,7 +135,7 @@ export function initScrollIndicator(opts: ScrollIndicatorOpts): ScrollIndicator 
     activeIdx = i;
 
     /* neutral ink for THIS stage: dark stage -> light ink, and back */
-    nav.style.setProperty('--si-ink', lum(views[i].stage) > INK_FLIP ? '#000' : '#fff');
+    nav.style.setProperty('--si-ink', inkOn(views[i].stage));
 
     buttons.forEach((b, j) => {
       const on = j === i;

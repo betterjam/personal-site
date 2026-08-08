@@ -14,7 +14,7 @@ Here's what that means in practice, with the receipts.
 
 ## Hybrid, because reality is hybrid
 
-Most interesting systems have a piece that cannot move to the cloud. In a [hybrid commerce platform](#/page/commerce-replatform) I built, it's the registers on the shop floor: database-level replication carries data across the boundary, and a custom event-driven middleware turns two incompatible worlds into one coherent domain. Cloud architecture that assumes greenfield is architecture for slide decks.
+Most interesting systems have a piece that cannot move to the cloud. In [Liquor Cart](#/page/commerce-replatform) it's the registers on the shop floor: database-level replication carries data across the boundary, and a custom event-driven middleware turns two incompatible worlds into one coherent domain. Cloud architecture that assumes greenfield is architecture for slide decks.
 
 ## Cost is a design constraint, not a monthly surprise
 

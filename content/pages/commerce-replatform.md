@@ -1,11 +1,11 @@
 ---
-summary: A hybrid cloud/on-premise commerce platform — built from scratch on Magento with 40+ custom modules, an event-driven .NET middleware, and an admin the business can run without a developer.
+summary: Liquor Cart — a hybrid cloud/on-premise commerce platform built from scratch on Magento with 40+ custom modules, an event-driven .NET middleware, and an admin the business runs without a developer.
+image: asset:liquor-cart-app/storefront-homepage-hero
+gallery: asset:liquor-cart-app/liquor-category-layered-navigation|Category browsing with layered navigation, asset:liquor-cart-app/homepage-category-promos-and-product-grid|Homepage promotions and product grid
 ---
-# Hybrid Commerce Platform
+# Liquor Cart — Hybrid Commerce
 
-*Client work, described without naming the client.*
-
-A retailer with physical stores sells in two places at once: the shop floor and the internet. The registers run on-premise and are never moving to the cloud; the storefront runs on Magento in AWS. **This platform is the machinery that lets both be true** — built from scratch, storefront to infrastructure.
+A liquor retailer sells in two places at once: the shop floor and the internet. The registers run on-premise and are never moving to the cloud; the storefront runs on Magento in AWS. **Liquor Cart is the machinery that lets both be true** — built from scratch, storefront to infrastructure.
 
 ## The bridge between two worlds
 
@@ -39,5 +39,3 @@ Dockerised local development with live file sync, a production-like environment 
 ## What it taught me
 
 Hybrid is the honest word for most real commerce: there is nearly always a system that cannot move — a register, an ERP, a box in a back room — and the craft is a seam that tolerates it being slow, duplicated, out of order or briefly offline. Everything I believe about [integrations](#/page/integrations) and [event sourcing](#/page/event-sourcing) was stress-tested here.
-
-*Screenshots are omitted deliberately: every storefront capture carries the client's brand, and their consent to be named here hasn't been established. The architecture above is mine to describe; their identity isn't mine to publish.*

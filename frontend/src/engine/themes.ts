@@ -29,6 +29,19 @@ export function lum(hex: string): number {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 
+/** Stage luminance where white ink stops beating black ink (WCAG). */
+export const INK_FLIP = 0.18;
+
+/**
+ * The neutral ink that stays legible over a stage hex — the deck chrome
+ * (scroll indicator, scroll hint) pushes this as a scoped custom property
+ * so one rule set serves both the cream and the near-black stages.
+ * Neutral only: never a palette color.
+ */
+export function inkOn(stage: string): string {
+  return lum(stage) > INK_FLIP ? '#000' : '#fff';
+}
+
 /* ----------------------------------------------------------- text utils */
 
 export function kebab(k: string): string {

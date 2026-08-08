@@ -59,6 +59,12 @@ export interface DeckOpts {
   revealSeconds: number;
   /** Called whenever a view becomes the navigation target (rail state). */
   onViewTargeted?: (id: string, index: number) => void;
+  /**
+   * Called when a view has LANDED (swarm converged / instant swap done),
+   * including the boot seat. Pure observation — the deck's behaviour does
+   * not depend on it (the scroll hint re-arms here).
+   */
+  onViewLanded?: (id: string, index: number) => void;
 }
 
 export interface Deck {
@@ -189,6 +195,7 @@ export function initDeck(views: DeckView[], opts: DeckOpts): Deck {
 
   /** The displayed view has fully landed — pin its hash. */
   function landed(i: number): void {
+    opts.onViewLanded?.(views[i].id, i); /* observers first — the hash guard below is not theirs */
     if (OVERLAY_HASH.test(location.hash)) return; /* #/blog/… owns the URL */
     history.replaceState(null, '', '#' + views[i].id);
   }

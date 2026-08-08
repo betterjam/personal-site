@@ -17,7 +17,7 @@ I own the whole stack: the event-driven domain model, the multitenancy, the AWS 
 ## Commerce & integrations engineering
 **Hybrid cloud/on-premise commerce**
 
-Designed and built a [hybrid commerce platform](#/page/commerce-replatform) for a retailer whose registers live on the shop floor and whose storefront lives in AWS: database-level replication across the boundary, a custom .NET middleware (event-driven, domain-driven, event-sourced catalog, CQRS behind an API gateway), and 40+ custom Magento modules that let the business operate the platform without a developer.
+Designed and built [Liquor Cart](#/page/commerce-replatform), a hybrid commerce platform for a retailer whose registers live on the shop floor and whose storefront lives in AWS: database-level replication across the boundary, a custom .NET middleware (event-driven, domain-driven, event-sourced catalog, CQRS behind an API gateway), and 40+ custom Magento modules that let the business operate the platform without a developer.
 
 *Magento 2 · Hyvä · .NET · RabbitMQ · PostgreSQL · SymmetricDS · AWS CDK*
 

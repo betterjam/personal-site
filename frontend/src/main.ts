@@ -32,6 +32,7 @@ import { abbr, accentOf, applyTokens, pad2, stageOf } from './engine/themes';
 import { createParticleEngine } from './engine/particles';
 import { initDeck, type DeckView } from './engine/scroll';
 import { initScrollIndicator } from './engine/scrollIndicator';
+import { initScrollHint } from './engine/scrollHint';
 import { initCursor } from './engine/cursor';
 import type { SectionBuilder, SectionCtx, SectionInstance } from './sections/types';
 import { HUB_ID, buildHub } from './sections/hub';
@@ -317,19 +318,45 @@ const introWillRun = initialIndex === 0 && !reduced();
 /* the scroll indicator — floating capsule at the right edge: entries in
    deck order, clicks through the same goTo path as the rail buttons */
 const sectionLabels = new Map(CONTENT.sections.map((s): [string, string] => [s.id, s.label]));
+/** The one place a view's human label comes from — the content data. */
+function labelOf(id: string): string {
+  return id === HUB_ID ? 'Overview' : (sectionLabels.get(id) ?? id);
+}
 const indicator = initScrollIndicator({
-  views: views.map((v) => ({
-    id: v.id,
-    label: v.id === HUB_ID ? 'Overview' : (sectionLabels.get(v.id) ?? v.id),
-    stage: v.stage,
-  })),
+  views: views.map((v) => ({ id: v.id, label: labelOf(v.id), stage: v.stage })),
   reduced,
   onSelect(id) {
     deck.goTo(viewIndexOf(id));
   },
 });
-/* the hints speak the same mono the rail does */
-indicator.el.style.setProperty('--font-mono', hubTheme.type.utility.stack);
+
+/* the scroll hint — the indicator's complement: it appears only at an
+   inner edge, where one more scroll changes section, and names where
+   that scroll lands. Its click is the same goTo path. */
+const hint = initScrollHint({
+  views: views.map((v) => ({
+    id: v.id,
+    label: labelOf(v.id),
+    stage: v.stage,
+    el: v.instance.el,
+  })),
+  reduced,
+  onSelect(id) {
+    deck.goTo(viewIndexOf(id), 'auto');
+  },
+  /* the footer rides the LAST view's inner scroll — never cover it */
+  avoid: () => footEl,
+});
+
+/* the chrome speaks the same mono the rail does */
+for (const node of [indicator.el, hint.el]) {
+  node.style.setProperty('--font-mono', hubTheme.type.utility.stack);
+}
+/** Deck chrome comes up together once the intro (if any) is done. */
+function revealChrome(): void {
+  indicator.reveal();
+  hint.reveal();
+}
 
 const deckViews: DeckView[] = views.map((v) => ({
   id: v.id,
@@ -353,10 +380,14 @@ const deck = initDeck(deckViews, {
   skipInitialEntrance: introWillRun,
   revealSeconds: MIXTAPE.transition.tempo.reveal,
   onViewTargeted(id) {
-    /* rail + indicator stay in lockstep — targeting, landing and the
-       hash deep-link boot all funnel through this one callback */
+    /* rail + indicator + hint stay in lockstep — targeting, landing and
+       the hash deep-link boot all funnel through this one callback */
     markNavActive(id);
     indicator.setActive(id);
+    hint.setTarget(id); /* a morph is starting: the hint ducks out */
+  },
+  onViewLanded(id) {
+    hint.setLanded(id); /* landed: re-arm on this view's inner scroller */
   },
 });
 
@@ -384,12 +415,12 @@ void resolvePageList().then(({ pages }) => {
 
 function runIntro(): void {
   if (!introWillRun) {
-    indicator.reveal(); /* reduced motion or deep link — no intro to wait on */
+    revealChrome(); /* reduced motion or deep link — no intro to wait on */
     return;
   }
   const handle = particles.intro(hub.headline, MIXTAPE.hub.theme);
   if (!handle) {
-    indicator.reveal();
+    revealChrome();
     return; /* sampling failed: everything stays visible */
   }
   const T = MIXTAPE.transition.tempo;
@@ -411,7 +442,7 @@ function runIntro(): void {
     },
     land + T.reveal * 0.7,
   );
-  tl.call(() => indicator.reveal(), undefined, land + T.reveal * 0.7);
+  tl.call(() => revealChrome(), undefined, land + T.reveal * 0.7);
 }
 runIntro();
 
@@ -422,7 +453,7 @@ function onReducedChange(): void {
     return;
   }
   particles.killAll();
-  indicator.reveal(); /* the intro may die before its reveal cue fires */
+  revealChrome(); /* the intro may die before its reveal cue fires */
   deck.syncMotion(); /* settles any in-flight morph on the latest target */
   const settled = [hub.headline, ...hub.rise, railEl];
   gsap.killTweensOf(settled);
