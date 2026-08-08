@@ -1,4 +1,5 @@
 import { Annotations, CfnOutput, Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import * as athena from 'aws-cdk-lib/aws-athena';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -9,6 +10,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as glue from 'aws-cdk-lib/aws-glue';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -444,12 +446,41 @@ export class DiegoSiteStack extends FencedStack {
         readTimeout: Duration.seconds(30),
       });
 
+    /*
+     * Visitor analytics, the server-side way: CloudFront standard logs into
+     * a private bucket, queried with Athena (see the `analytics` scope after
+     * the distribution). No tracking script, no cookies, no consent banner —
+     * and it keeps counting while the API sleeps, because the edge writes
+     * the logs, not the app. WAF was considered and skipped: it is a
+     * firewall (blocking, bot control) with a monthly bill, not analytics;
+     * Shield Standard already rides on CloudFront for free.
+     */
+    const accessLogs = new s3.Bucket(site, 'AccessLogs', {
+      bucketName: `${SITE_RESOURCE_PREFIX}logs-${this.account}-${this.region}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      // CloudFront's log delivery account writes via ACL, which
+      // BucketOwnerEnforced would refuse.
+      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
+      lifecycleRules: [
+        // raw logs expire after a year of history; query results are scratch
+        { prefix: 'cf/', expiration: Duration.days(365) },
+        { prefix: 'athena/', expiration: Duration.days(7) },
+      ],
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
     const distribution = new cloudfront.Distribution(site, 'Distribution', {
       comment: 'diego-site — S3 (SPA) + /api/* to the blog ALB',
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       enableIpv6: true,
+      enableLogging: true,
+      logBucket: accessLogs,
+      logFilePrefix: 'cf/',
+      logIncludesCookies: false,
       defaultBehavior: {
         // OAC (not the legacy OAI): the bucket stays private and only this
         // distribution can read it.
@@ -495,6 +526,124 @@ export class DiegoSiteStack extends FencedStack {
     }
 
     this.siteUrl = dnsEnabled ? `https://${domainName}` : `https://${distribution.distributionDomainName}`;
+
+    // ── analytics: Athena over the CloudFront logs ──────────────────────
+    /*
+     * The standard-log format is fixed by CloudFront (tab-separated, two
+     * header lines, gzip). This Glue table mirrors it verbatim so Athena
+     * reads the raw files in place — nothing is copied, nothing is ETL'd.
+     * The named queries are the "analytics dashboard": visitors per day,
+     * top pages, referrers, and a rough where-from via edge locations
+     * (standard logs carry the edge's IATA code, not viewer country).
+     */
+    const analyticsScope = new Construct(this, 'analytics');
+    const glueDb = new glue.CfnDatabase(analyticsScope, 'Db', {
+      catalogId: this.account,
+      databaseInput: { name: 'diego_site_analytics' },
+    });
+    const logTable = new glue.CfnTable(analyticsScope, 'CfLogs', {
+      catalogId: this.account,
+      databaseName: 'diego_site_analytics',
+      tableInput: {
+        name: 'diego_site_cf_logs',
+        tableType: 'EXTERNAL_TABLE',
+        parameters: { 'skip.header.line.count': '2', 'EXTERNAL': 'TRUE' },
+        storageDescriptor: {
+          location: accessLogs.s3UrlForObject('cf/'),
+          inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
+          outputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat',
+          serdeInfo: {
+            serializationLibrary: 'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe',
+            parameters: { 'field.delim': '\t', 'serialization.format': '\t' },
+          },
+          columns: [
+            { name: 'date', type: 'date' },
+            { name: 'time', type: 'string' },
+            { name: 'x_edge_location', type: 'string' },
+            { name: 'sc_bytes', type: 'bigint' },
+            { name: 'c_ip', type: 'string' },
+            { name: 'cs_method', type: 'string' },
+            { name: 'cs_host', type: 'string' },
+            { name: 'cs_uri_stem', type: 'string' },
+            { name: 'sc_status', type: 'int' },
+            { name: 'cs_referrer', type: 'string' },
+            { name: 'cs_user_agent', type: 'string' },
+            { name: 'cs_uri_query', type: 'string' },
+            { name: 'cs_cookie', type: 'string' },
+            { name: 'x_edge_result_type', type: 'string' },
+            { name: 'x_edge_request_id', type: 'string' },
+            { name: 'x_host_header', type: 'string' },
+            { name: 'cs_protocol', type: 'string' },
+            { name: 'cs_bytes', type: 'bigint' },
+            { name: 'time_taken', type: 'float' },
+            { name: 'x_forwarded_for', type: 'string' },
+            { name: 'ssl_protocol', type: 'string' },
+            { name: 'ssl_cipher', type: 'string' },
+            { name: 'x_edge_response_result_type', type: 'string' },
+            { name: 'cs_protocol_version', type: 'string' },
+            { name: 'fle_status', type: 'string' },
+            { name: 'fle_encrypted_fields', type: 'int' },
+            { name: 'c_port', type: 'int' },
+            { name: 'time_to_first_byte', type: 'float' },
+            { name: 'x_edge_detailed_result_type', type: 'string' },
+            { name: 'sc_content_type', type: 'string' },
+            { name: 'sc_content_len', type: 'bigint' },
+            { name: 'sc_range_start', type: 'bigint' },
+            { name: 'sc_range_end', type: 'bigint' },
+          ],
+        },
+      },
+    });
+    logTable.addDependency(glueDb);
+
+    const workgroup = new athena.CfnWorkGroup(analyticsScope, 'Workgroup', {
+      name: `${SITE_RESOURCE_PREFIX}analytics`,
+      description: 'Visitor metrics for diegopalominos.dev, straight from the CloudFront logs',
+      workGroupConfiguration: {
+        resultConfiguration: {
+          outputLocation: accessLogs.s3UrlForObject('athena/'),
+        },
+        publishCloudWatchMetricsEnabled: false,
+      },
+      recursiveDeleteOption: true,
+    });
+
+    const namedQuery = (queryId: string, name: string, description: string, query: string): void => {
+      new athena.CfnNamedQuery(analyticsScope, queryId, {
+        database: 'diego_site_analytics',
+        workGroup: workgroup.name,
+        name,
+        description,
+        queryString: query,
+      }).addDependency(workgroup);
+    };
+    namedQuery('QVisitors', 'diego-site-visitors-per-day',
+      'Requests and unique IPs per day, last 30 days',
+      'SELECT "date", count(*) AS requests, count(DISTINCT c_ip) AS unique_visitors\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + 'GROUP BY "date" ORDER BY "date" DESC');
+    namedQuery('QPages', 'diego-site-top-pages',
+      'Most-visited pages, last 30 days (assets and API calls excluded)',
+      'SELECT cs_uri_stem AS page, count(*) AS hits, count(DISTINCT c_ip) AS visitors\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + '  AND cs_method = \'GET\' AND sc_status < 400\n'
+      + '  AND cs_uri_stem NOT LIKE \'/assets/%\' AND cs_uri_stem NOT LIKE \'/api/%\'\n'
+      + 'GROUP BY cs_uri_stem ORDER BY hits DESC LIMIT 50');
+    namedQuery('QReferrers', 'diego-site-referrers',
+      'Where visitors come from, last 30 days (own domain excluded)',
+      'SELECT cs_referrer, count(*) AS hits\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + '  AND cs_referrer <> \'-\' AND cs_referrer NOT LIKE \'%diegopalominos.dev%\'\n'
+      + 'GROUP BY cs_referrer ORDER BY hits DESC LIMIT 50');
+    namedQuery('QEdges', 'diego-site-visitor-regions',
+      'Rough geography via the serving edge (IATA code prefix), last 30 days',
+      'SELECT substr(x_edge_location, 1, 3) AS edge_airport, count(*) AS requests, count(DISTINCT c_ip) AS visitors\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + 'GROUP BY substr(x_edge_location, 1, 3) ORDER BY requests DESC');
 
     // ── pipeline ────────────────────────────────────────────────────────
     const pipelineScope = new Construct(this, 'pipeline');

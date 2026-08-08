@@ -47,6 +47,26 @@ Two deliberate design calls worth knowing about:
   (omitting the property) would mean CloudFormation could never restore the
   service at all.
 
+### Visitor analytics (the `analytics` scope)
+
+CloudFront standard logs → private `diego-site-logs-*` bucket (365-day
+retention) → Athena. No tracking script, no cookies, no consent banner, and
+the edge keeps counting while the API sleeps. WAF was considered and skipped
+on purpose: it is a firewall with a monthly bill (blocking, bot control),
+not analytics — Shield Standard already covers CloudFront for free. Revisit
+only if real abuse shows up.
+
+Two ways to read the numbers (logs arrive with up to ~an hour of delay):
+
+- **Console**: Athena → workgroup `diego-site-analytics` → saved queries
+  `diego-site-visitors-per-day`, `-top-pages`, `-referrers`,
+  `-visitor-regions` (rough geography via the serving edge's IATA code —
+  standard logs do not carry viewer country).
+- **Terminal**: `AWS_PROFILE=eleva ./scripts/analytics.sh [all|visitors|pages|referrers|regions]`.
+
+Cost: pennies — S3 storage for gzipped logs plus Athena's $5/TB scanned
+(this site's logs are megabytes).
+
 ## `DiegoControlStack` — control.diegopalominos.dev
 
 The playground: a Node 22 Lambda behind a throttled HTTP API, the panel's

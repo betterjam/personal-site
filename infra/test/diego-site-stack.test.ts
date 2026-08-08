@@ -444,8 +444,12 @@ describe('F5 — name prefixes', () => {
   }
 
   test('every physically-named resource is prefixed diego-site- (SSM paths and the pipeline aside)', () => {
+    // Glue databases/tables forbid hyphens, so there — and only there — the
+    // prefix wears underscores. Same fence, different spelling.
+    const underscorePrefix = SITE_RESOURCE_PREFIX.replace(/-/g, '_');
     const offenders = physicalNames().filter(({ value }) =>
       !value.startsWith(SITE_RESOURCE_PREFIX)
+      && !value.startsWith(underscorePrefix)
       && !value.startsWith(`${SITE_SSM_PREFIX}/`)
       && value !== SITE_PIPELINE_NAME);
     expect(offenders).toEqual([]);
