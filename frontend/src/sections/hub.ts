@@ -236,6 +236,7 @@ export function buildHub(
   const aside = el('div', 'hb-aside');
   aside.appendChild(el('p', 'hb-role', profile.role));
   aside.appendChild(el('p', 'hb-tagline', profile.tagline));
+  if (profile.credential) aside.appendChild(el('p', 'hb-degree', profile.credential));
   mast.appendChild(aside);
 
   const coords = el('p', 'hb-coords');
@@ -251,6 +252,16 @@ export function buildHub(
     a.rel = 'noopener';
     coords.appendChild(a);
   }
+  /* the career record, first-class on the masthead: the experience page is
+     an internal route (same tab), the ATS résumé is the file itself */
+  const cexp = el('a', 'hb-link', 'Experience');
+  cexp.href = '#/page/experience';
+  coords.appendChild(cexp);
+  const ccv = el('a', 'hb-link', 'Résumé (PDF)');
+  ccv.href = '/resume.pdf';
+  ccv.target = '_blank';
+  ccv.rel = 'noopener';
+  coords.appendChild(ccv);
   mast.appendChild(coords);
   col.appendChild(mast);
 

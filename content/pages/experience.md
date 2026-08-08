@@ -50,9 +50,9 @@ First professional seat, inside a scientific computing center: PHP, ORMs and SQL
 
 ## Education
 
-**Ingeniería de Ejecución en Sistemas Computacionales — Universidad Técnica Federico Santa María (UTFSM)**, Valparaíso, Chile. Cursada dentro del programa de Ingeniería Civil Informática.
+**Ingeniería de Ejecución en Sistemas Computacionales — Universidad Técnica Federico Santa María (UTFSM)**, Valparaíso, Chile.
 
-In English: **Bachelor's degree in Computer Systems Engineering**, coursework completed in the Computer Science & Engineering (Ingeniería Civil Informática) program at UTFSM — an engineering school in the old sense: theory first, no sympathy for hand-waving. [Why that still matters](#/page/about).
+In English: **Bachelor's degree in Computer Systems Engineering** — from an engineering school in the old sense: theory first, no sympathy for hand-waving. [Why that still matters](#/page/about).
 
 ---
 

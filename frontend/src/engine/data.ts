@@ -40,6 +40,8 @@ export interface Profile {
   name: string;
   role: string;
   tagline: string;
+  /** The academic record, stated once — rendered under the tagline. */
+  credential?: string;
   location: string;
   contact: string;
   links: ProfileLink[];
