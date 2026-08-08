@@ -45,7 +45,10 @@ button { font: inherit; }
 }
 .mx-brand {
   margin: 0; display: flex; align-items: baseline; gap: .55rem;
-  align-self: center; min-width: 0; white-space: nowrap;
+  align-self: center; flex: none; white-space: nowrap;
+  /* rigid on purpose: the nav beside it scrolls, so IT absorbs the squeeze.
+     If the brand were allowed to shrink, its nowrap text would overprint
+     the first tab on narrow viewports. */
 }
 .mx-name { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; font-size: .95rem; }
 .mx-role {
@@ -53,7 +56,10 @@ button { font: inherit; }
   color: color-mix(in srgb, var(--mx-ink) 55%, var(--mx-bg));
 }
 @media (max-width: 620px) { .mx-role { display: none; } }
-.mx-nav { margin-left: auto; overflow-x: auto; scrollbar-width: thin; display: flex; }
+/* no scrollbar: the fade-edge masks below are the overflow affordance —
+   a real scrollbar inside the 3.25rem rail eats its height on desktop UAs */
+.mx-nav { margin-left: auto; overflow-x: auto; scrollbar-width: none; display: flex; }
+.mx-nav::-webkit-scrollbar { display: none; }
 /* overflow affordance: when tabs are clipped, the cut edge fades out so
    "more" reads as a fade, not a stray glyph sliver (classes set by JS) */
 .mx-nav.has-more-r {
