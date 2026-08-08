@@ -4,12 +4,13 @@
     { "title": "Design exploration — six finishes, one content.json", "status": "done" },
     { "title": "Mixtape composition: per-section themes + particle transitions", "status": "done" },
     { "title": "Event-sourced blog API (NestJS, append-only log, replay on boot)", "status": "done" },
+    { "title": "This banner: commit stamps + deploys as events", "status": "done" },
+    { "title": "CDK stack: ECS Fargate ARM + RDS t4g.micro, panel-schedulable", "status": "done" },
+    { "title": "Pipeline eleva-diego-site-prod: push to main, live in minutes", "status": "done" },
+    { "title": "Live on diegopalominos.dev — custom domain + the lights-out schedule", "status": "done" },
+    { "title": "IaC section wired read-only to the real control plane", "status": "done" },
+    { "title": "Career in full: education + history on /experience, ATS résumé PDF baked by the pipeline", "status": "done" },
     { "title": "Scroll-animated frontend — every section choreographed with GSAP", "status": "doing" },
-    { "title": "This banner: commit stamps + deploys as events", "status": "doing" },
-    { "title": "CDK stack: ECS Fargate ARM + RDS t4g.micro, panel-schedulable", "status": "next" },
-    { "title": "Pipeline eleva-blog-prod → ops panel card", "status": "next" },
-    { "title": "IaC section wired read-only to the real control plane", "status": "next" },
-    { "title": "Custom domain + the lights-out schedule", "status": "next" },
     { "title": "Convince Claude that true bypass matters", "status": "next" }
   ]
 }

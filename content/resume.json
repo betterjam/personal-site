@@ -1,0 +1,99 @@
+{
+  "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name/contact come from content.json so they cannot drift.",
+  "location": "Valparaíso, Chile · Remote worldwide",
+  "website": "https://diegopalominos.dev",
+  "summary": "Cloud architect and full-stack software engineer with 12+ years building event-driven systems on AWS. I turn legacy platforms into cloud-native, high-availability architectures: multitenant SaaS, hybrid cloud/on-premise commerce, real-time data pipelines. Founder of Eleva (Startup Chile Ignite 2020 winner). Deep in TypeScript/Node.js, C#/.NET Core, Angular, AWS CDK, and CI/CD automation.",
+  "experience": [
+    {
+      "company": "Electronic Payments",
+      "title": "Lead Software Architect & Full-Stack Engineer",
+      "type": "Contract",
+      "start": "Feb 2024",
+      "end": "Present",
+      "location": "Remote",
+      "bullets": [
+        "Spearheaded the transformation of legacy systems into a cloud-native, event-driven architecture, enabling real-time data processing, high availability, and future AI integration.",
+        "Designed and deployed a fully automated AWS eCommerce infrastructure using CDK and Projen, supporting ECS clusters, RDS (PostgreSQL/MySQL), Redis, OpenSearch, and RabbitMQ.",
+        "Built a custom asynchronous communication middleware in .NET Core, enabling seamless integration between an on-premise POS and Magento (event-driven, domain-driven design, event-sourced catalog, CQRS).",
+        "Architected and delivered a modern CI/CD pipeline for a traditionally manual project, streamlining deployments, enabling scalability, and improving operational visibility.",
+        "Deployed SymmetricDS in a clustered AWS environment, ensuring robust and scalable data synchronization across services.",
+        "Enabled junior developers to contribute meaningfully to complex systems by creating scalable workflows and establishing high development standards.",
+        "Acted as hands-on architect, full-stack engineer, DevOps lead, and mentor across the entire platform lifecycle."
+      ]
+    },
+    {
+      "company": "Eleva (eleva.school)",
+      "title": "Founder & Platform Architect",
+      "type": "Founder",
+      "start": "2017",
+      "end": "Present",
+      "location": "Valparaíso, Chile · Remote",
+      "bullets": [
+        "Founded and operate a multitenant SaaS platform used by schools for 360-degree performance evaluations and improvement plans; winner of Startup Chile Ignite (2020).",
+        "Architected the full platform: C#/.NET modular API on ECS Fargate, Angular SPA on S3 + CloudFront, PostgreSQL on Amazon RDS, all provisioned as code with AWS CDK and Projen.",
+        "Built CI/CD with AWS CodePipeline (GitHub via CodeConnections) covering infrastructure and applications across dev/qa/prod environments.",
+        "Designed the event-driven, multitenant domain model and the operations tooling, including a control panel that renders the live architecture from deployed CloudFormation and schedules environments down outside school hours to control cost.",
+        "Integrating AI assistant capabilities while keeping decision-making functions deterministic and auditable."
+      ]
+    },
+    {
+      "company": "GRUBBRR",
+      "title": "Senior Full-Stack Software Engineer",
+      "type": "Contract",
+      "start": "Apr 2022",
+      "end": "Aug 2023",
+      "location": "Boca Raton, Florida, USA · Remote",
+      "bullets": [
+        "Participated in requirements gathering to solidify prerequisites and determine the best technical solution for business needs.",
+        "Reviewed code, debugged problems, and corrected issues on the C# .NET Core backend (GraphQL, gRPC, event-driven design).",
+        "Created and updated Azure Cosmos DB database designs and data models.",
+        "Developed the front-end of the Clover SMB product using Angular 13."
+      ]
+    },
+    {
+      "company": "Freelance",
+      "title": "Software Engineer",
+      "type": "Full-time",
+      "start": "Jan 2014",
+      "end": "Jul 2020",
+      "location": "Valparaíso Region, Chile · Remote",
+      "bullets": [
+        "Delivered front-end projects in Angular (versions 2 through 11) and React for clients across industries.",
+        "Built APIs in Node.js, .NET Core, Java JEE, and Spring Boot.",
+        "Designed and maintained AWS cloud architectures for MVP deployments.",
+        "Wrote unit tests to sustain high code coverage; troubleshot, tested, and refactored software to improve efficiency.",
+        "Provided professional services and support in dynamic work environments."
+      ]
+    },
+    {
+      "company": "Centro Científico Tecnológico de Valparaíso (CCTVal)",
+      "title": "PHP Full-Stack Developer",
+      "type": "Part-time",
+      "start": "Feb 2013",
+      "end": "Jul 2014",
+      "location": "Valparaíso, Chile · On-site",
+      "bullets": [
+        "Developed and managed databases using PHP, ORM, and SQL.",
+        "Reviewed code, debugged problems, and corrected issues in research-supporting web tooling."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor's Degree in Computer Systems Engineering",
+      "degreeNative": "Ingeniería de Ejecución en Sistemas Computacionales",
+      "school": "Universidad Técnica Federico Santa María (UTFSM)",
+      "location": "Valparaíso, Chile",
+      "detail": "Coursework completed in the Computer Science & Engineering program (Ingeniería Civil Informática)."
+    }
+  ],
+  "skills": [
+    { "group": "Cloud & Infrastructure", "items": "AWS (ECS, Fargate, Lambda, RDS, S3, CloudFront, Route 53, EventBridge, OpenSearch, ElastiCache/Redis), AWS CDK, Projen, CloudFormation, Docker, CI/CD (CodePipeline, CodeBuild), Infrastructure as Code" },
+    { "group": "Backend", "items": "C#, .NET Core, Node.js, TypeScript, NestJS, Java (JEE, Spring Boot), PHP, GraphQL, gRPC, REST" },
+    { "group": "Architecture", "items": "Event-driven architecture, event sourcing, CQRS, domain-driven design, microservices, multitenancy, distributed systems" },
+    { "group": "Frontend", "items": "Angular (2–13), React, TypeScript, JavaScript, HTML, CSS" },
+    { "group": "Data & Messaging", "items": "PostgreSQL, MySQL, Azure Cosmos DB, Redis, OpenSearch, RabbitMQ, SymmetricDS" },
+    { "group": "Commerce", "items": "Magento 2, Hyvä, POS integrations, payments" }
+  ],
+  "languages": "Spanish (native) · English (professional working proficiency)"
+}
