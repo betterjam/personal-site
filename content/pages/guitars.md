@@ -16,11 +16,11 @@ Tube amp held at the edge of breakup — the analog equivalent of running a syst
 
 ## The collector
 
-I don't just play them — I collect them, and I sell them, and I do both the way I do engineering: with the details written down. My taste runs high-end and unapologetically vintage: nitrocellulose finishes that breathe, check and wear honestly instead of hiding under a millimeter of poly; vintage specs as the builders drew them; original parts with the solder joints undisturbed. Years of handling instruments teach you to tell a *great* guitar from a merely expensive one — the neck carve that disappears in your hand, the dry weight of good wood, the pot codes and plate stamps that confirm a story or quietly end it.
+Beyond playing, I collect — and sell — high-end guitars. My taste is vintage all the way: nitrocellulose finishes that breathe and age honestly, vintage specs, original parts. Spend enough years with instruments in your hands and you learn to tell a great guitar from a merely expensive one — the neck that disappears in your hand, the weight of good wood, the small details that confirm a story or quietly end it.
 
-That diligence is also my reputation. In Chile's guitar communities I'm known as a seller whose descriptions can be trusted completely: every detail disclosed, every flaw photographed, provenance traced before an instrument ever gets listed. If I say it's original, it's original — I checked, the way I'd review a pull request. Buying an instrument sight-unseen requires trust, and trust is earned the slow way: one honest listing at a time, for years.
+Selling taught me that trust is the whole game. In Chile's guitar communities I'm known for descriptions people can rely on: every detail disclosed, every flaw photographed, provenance checked before anything gets listed. If I say a part is original, it's because I verified it. That reputation took years to build, one honest listing at a time — and it's worth more to me than any sale.
 
-And here is why the guitars belong on an engineering site at all: a sixty-year-old instrument, still in service, still appreciating, is the strongest argument I know against disposable work. Software rots in months; a well-built guitar outlives its builder. Guitars are proof that when you build great things — carefully, with the right materials, without shortcuts — they last.
+Maybe that's why guitars sit so naturally next to the engineering. A sixty-year-old instrument, still in service and sounding better than the day it left the factory, is quiet proof that when something is built with care and the right materials, it lasts.
 
 ## The colors
 
