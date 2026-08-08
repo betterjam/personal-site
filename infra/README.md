@@ -61,8 +61,14 @@ Two ways to read the numbers (logs arrive with up to ~an hour of delay):
 - **Console**: Athena → workgroup `diego-site-analytics` → saved queries
   `diego-site-visitors-per-day`, `-top-pages`, `-referrers`,
   `-visitor-regions` (rough geography via the serving edge's IATA code —
-  standard logs do not carry viewer country).
-- **Terminal**: `AWS_PROFILE=eleva ./scripts/analytics.sh [all|visitors|pages|referrers|regions]`.
+  standard logs do not carry viewer country), `-returning-visitors` +
+  `-audience-summary` (recurrence: IPs active on 2+ days), and
+  `-visitor-ips` (the city report's feed).
+- **Terminal**: `AWS_PROFILE=eleva ./scripts/analytics.sh
+  [all|visitors|pages|referrers|regions|recurrent|cities]`. The `cities`
+  report geolocates visitor IPs through ip-api.com — third-party, runs only
+  on demand, city accuracy is approximate (recurrence via IP is an
+  approximation too: carriers rotate addresses).
 
 Cost: pennies — S3 storage for gzipped logs plus Athena's $5/TB scanned
 (this site's logs are megabytes).

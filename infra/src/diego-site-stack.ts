@@ -644,6 +644,31 @@ export class DiegoSiteStack extends FencedStack {
       + 'FROM diego_site_cf_logs\n'
       + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
       + 'GROUP BY substr(x_edge_location, 1, 3) ORDER BY requests DESC');
+    namedQuery('QReturning', 'diego-site-returning-visitors',
+      'IPs active on 2+ distinct days in the last 30 — the recurrent audience',
+      'SELECT c_ip AS visitor_ip, count(DISTINCT "date") AS days_active,\n'
+      + '       min("date") AS first_seen, max("date") AS last_seen, count(*) AS requests\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + '  AND cs_uri_stem NOT LIKE \'/assets/%\'\n'
+      + 'GROUP BY c_ip HAVING count(DISTINCT "date") >= 2\n'
+      + 'ORDER BY days_active DESC, requests DESC LIMIT 100');
+    namedQuery('QAudience', 'diego-site-audience-summary',
+      'One line: unique visitors, how many came back, and the returning share',
+      'WITH per_ip AS (\n'
+      + '  SELECT c_ip, count(DISTINCT "date") AS days_active\n'
+      + '  FROM diego_site_cf_logs\n'
+      + '  WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + '  GROUP BY c_ip)\n'
+      + 'SELECT count(*) AS unique_visitors, count_if(days_active >= 2) AS returning,\n'
+      + '       round(100.0 * count_if(days_active >= 2) / count(*), 1) AS returning_pct\n'
+      + 'FROM per_ip');
+    namedQuery('QIps', 'diego-site-visitor-ips',
+      'Distinct visitor IPs with weight — feed for the city report (scripts/analytics.sh cities)',
+      'SELECT c_ip, count(*) AS requests, count(DISTINCT "date") AS days_active\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
+      + 'GROUP BY c_ip ORDER BY requests DESC LIMIT 500');
 
     // ── pipeline ────────────────────────────────────────────────────────
     const pipelineScope = new Construct(this, 'pipeline');
