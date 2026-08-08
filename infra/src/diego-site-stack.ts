@@ -811,6 +811,38 @@ export class DiegoSiteStack extends FencedStack {
       resources: [distribution.distributionArn],
     }));
 
+    /*
+     * Publishing is a CodeBuild sync, not an S3DeployAction, because cache
+     * lifetimes differ by file class: /assets names are content-hashed, so
+     * they are immutable for a year (repeat visits re-download nothing),
+     * while stable names (index.html, resume.pdf) stay at five minutes so
+     * a deploy is visible fast. Assets sync FIRST so new HTML never points
+     * at files that are not there yet, and nothing is ever deleted — HTML
+     * cached up to five minutes may still reference the previous bundle.
+     */
+    const publish = new codebuild.PipelineProject(pipelineScope, 'PublishFrontend', {
+      description: 'Syncs the built frontend to S3 with per-class cache lifetimes',
+      environment: {
+        buildImage,
+        computeType: codebuild.ComputeType.SMALL,
+      },
+      environmentVariables: {
+        SITE_BUCKET: { value: siteBucket.bucketName },
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          build: {
+            commands: [
+              'aws s3 sync assets "s3://${SITE_BUCKET}/assets" --cache-control "public, max-age=31536000, immutable"',
+              'aws s3 sync . "s3://${SITE_BUCKET}" --exclude "assets/*" --cache-control "public, max-age=300"',
+            ],
+          },
+        },
+      }),
+    });
+    siteBucket.grantReadWrite(publish);
+
     const pipeline = new codepipeline.Pipeline(pipelineScope, 'Pipeline', {
       pipelineName: SITE_PIPELINE_NAME,
       pipelineType: codepipeline.PipelineType.V2,
@@ -847,15 +879,10 @@ export class DiegoSiteStack extends FencedStack {
               deploymentTimeout: Duration.minutes(20),
               runOrder: 1,
             }),
-            new pipelineActions.S3DeployAction({
+            new pipelineActions.CodeBuildAction({
               actionName: 'PublishFrontend',
-              bucket: siteBucket,
+              project: publish,
               input: frontendOutput,
-              extract: true,
-              cacheControl: [
-                pipelineActions.CacheControl.setPublic(),
-                pipelineActions.CacheControl.maxAge(Duration.minutes(5)),
-              ],
               runOrder: 1,
             }),
             new pipelineActions.CodeBuildAction({

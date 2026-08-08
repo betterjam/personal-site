@@ -294,7 +294,7 @@ describe('pipeline', () => {
       'CodeBuild:DockerBuild',
       'CodeBuild:FrontendBuild',
       'ECS:DeployToEcs',
-      'S3:PublishFrontend',
+      'CodeBuild:PublishFrontend',
       'CodeBuild:InvalidateCdn',
     ]));
   });

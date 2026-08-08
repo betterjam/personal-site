@@ -88,7 +88,8 @@ button { font: inherit; }
 .mx-btn:hover { color: var(--mx-ink); }
 .mx-btn.is-active { color: var(--mx-ink); border-bottom-color: var(--mx-accent); }
 .mx-btn.is-active .mx-idx { color: var(--mx-accent); }
-.mx-idx { font-size: .6rem; color: color-mix(in srgb, var(--mx-ink) 40%, var(--mx-bg)); }
+/* 55% ink ≈ 5.4:1 on the graphite rail — 40% measured 3.6:1, under AA */
+.mx-idx { font-size: .6rem; color: color-mix(in srgb, var(--mx-ink) 55%, var(--mx-bg)); }
 .mx-lbl { white-space: nowrap; }
 /* chrome shimmer: only while the active section wears Candy Apple */
 .mx-btn.is-active.is-chrome .mx-lbl {
@@ -118,6 +119,12 @@ button { font: inherit; }
   display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.6rem;
   padding: 1.1rem clamp(1rem, 4vw, 2.5rem) 1.4rem;
   font-family: var(--font-mono); font-size: .72rem;
+}
+/* touch targets: .72rem links alone are ~15px tall; padding + the negative
+   margin grow the hit box past 24px without moving a pixel of layout */
+.mx-foot-row a, .mx-flinks a, .mx-pages a {
+  padding-block: .55rem;
+  margin-block: -.55rem;
 }
 .mx-mail {
   color: var(--mx-ink); text-decoration: underline;

@@ -132,7 +132,8 @@
 .hb-tagline { margin: 0; color: color-mix(in srgb, var(--p-graphite) 66%, var(--p-bone)); font-size: .9375rem; line-height: 1.55; }
 .hb-degree {
   margin: 0; font-family: var(--font-mono); font-size: .72rem; line-height: 1.5;
-  color: color-mix(in srgb, var(--p-graphite) 58%, var(--p-bone));
+  /* 70% graphite ≈ 5.5:1 on bone — 58% measured 3.8:1, under WCAG AA */
+  color: color-mix(in srgb, var(--p-graphite) 70%, var(--p-bone));
 }
 .hb-coords {
   grid-column: 1 / -1; margin: 2rem 0 0;
@@ -147,6 +148,9 @@
   color: var(--p-graphite); text-decoration: underline;
   text-decoration-color: var(--p-seafoam-deep); text-underline-offset: 3px;
   transition: color .15s ease;
+  /* touch target: grow the hit box past 24px, layout untouched */
+  padding-block: .5rem;
+  margin-block: -.5rem;
 }
 .hb-link:hover { color: var(--p-seafoam-deep); }
 @media (max-width: 900px) {
