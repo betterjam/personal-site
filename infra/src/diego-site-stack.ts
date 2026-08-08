@@ -669,6 +669,14 @@ export class DiegoSiteStack extends FencedStack {
       + 'FROM diego_site_cf_logs\n'
       + 'WHERE "date" >= date_add(\'day\', -30, current_date)\n'
       + 'GROUP BY c_ip ORDER BY requests DESC LIMIT 500');
+    namedQuery('QResume', 'diego-site-resume-downloads',
+      'Who takes the résumé: /resume.pdf downloads per day with where they came from',
+      'SELECT "date", count(*) AS downloads, count(DISTINCT c_ip) AS unique_visitors,\n'
+      + '       array_join(array_agg(DISTINCT cs_referrer), \', \') AS referrers\n'
+      + 'FROM diego_site_cf_logs\n'
+      + 'WHERE cs_uri_stem = \'/resume.pdf\' AND cs_method = \'GET\' AND sc_status < 400\n'
+      + '  AND "date" >= date_add(\'day\', -90, current_date)\n'
+      + 'GROUP BY "date" ORDER BY "date" DESC');
 
     // ── pipeline ────────────────────────────────────────────────────────
     const pipelineScope = new Construct(this, 'pipeline');

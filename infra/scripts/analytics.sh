@@ -113,12 +113,13 @@ for i, row in enumerate(out):
 }
 
 case "${1:-all}" in
-  all) for r in audience-summary visitors-per-day top-pages referrers visitor-regions; do run_report "$r"; done ;;
+  all) for r in audience-summary visitors-per-day top-pages referrers visitor-regions resume-downloads; do run_report "$r"; done ;;
   visitors) run_report visitors-per-day ;;
   pages) run_report top-pages ;;
   referrers) run_report referrers ;;
   regions) run_report visitor-regions ;;
   recurrent) run_report audience-summary; run_report returning-visitors ;;
+  resume) run_report resume-downloads ;;
   cities) cities_report ;;
-  *) echo "usage: $0 [all|visitors|pages|referrers|regions|recurrent|cities]" >&2; exit 2 ;;
+  *) echo "usage: $0 [all|visitors|pages|referrers|regions|recurrent|resume|cities]" >&2; exit 2 ;;
 esac
