@@ -90,6 +90,13 @@ export interface MorphSpec {
    * scatter and simply fades).
    */
   onSwap(): HTMLElement | null;
+  /**
+   * Convergence begins — the swarm starts collapsing onto the incoming
+   * headline. The deck plays the section's entrance HERE, under the
+   * still-settling swarm, so the view is already in motion when the
+   * curtain lifts (perceived speed without touching the swarm).
+   */
+  onConverge?(): void;
   /** The swarm has settled on the incoming headline — reveal the DOM. */
   onLand(): void;
   /** Transition finished and the swarm faded out. */
@@ -130,6 +137,14 @@ export interface ParticleEngine {
 
 const TEMPO = MIXTAPE.transition.tempo;
 const PARAMS = MIXTAPE.transition.params;
+/**
+ * The overture plays ONCE. The first morph of a session runs the full
+ * authored tempo — the first impression has earned it — and every later
+ * hop rides the same choreography compressed to half time, because a
+ * spectacle repeated at full length becomes a commute. Retargets always
+ * count as later hops: rapid scrolling wants speed, not ceremony.
+ */
+const HOP_SCALE = 0.5;
 const FLOURISH_COUNT = 400;
 const FLOURISH_COUNT_SMALL = 240;
 const MAX_FLOURISHES = 3;
@@ -434,6 +449,8 @@ export function createParticleEngine(
 
   let morphPool: Particle[] = [];
   let morphFx: Effect | null = null;
+  /** The session's first morph ran at full tempo (see HOP_SCALE). */
+  let overturePlayed = false;
 
   function morphPoolEnsure(from: Swatch[]): Particle[] {
     const count = vw < 768 ? 850 : PARAMS.particleCount;
@@ -531,18 +548,28 @@ export function createParticleEngine(
       spec.onComplete();
     });
 
+    /* half time after the overture (see HOP_SCALE) */
+    const scale = overturePlayed ? HOP_SCALE : 1;
+    overturePlayed = true;
+    const T = {
+      disperse: TEMPO.disperse * scale,
+      swarm: TEMPO.swarm * scale,
+      converge: TEMPO.converge * scale,
+      reveal: TEMPO.reveal * scale,
+    };
+
     /* ignition: particles take over the glyph positions as the DOM hides */
     tl.to(pp, { a: 1, duration: 0.12, ease: 'none' }, 0);
 
     /* destroy — tinted in the current view's palette */
-    tl.to(pp, { d: 1, duration: TEMPO.disperse, ease: 'power2.in' }, 0);
-    tl.to(pp, { w: 1, duration: Math.max(0.3, TEMPO.disperse * 0.5), ease: 'sine.out' }, 0.12);
+    tl.to(pp, { d: 1, duration: T.disperse, ease: 'power2.in' }, 0);
+    tl.to(pp, { w: 1, duration: Math.max(0.3, T.disperse * 0.5), ease: 'sine.out' }, 0.12);
 
     /* recolor in flight: mid-swarm the channels tween toward the target */
     tl.to(
       pp,
-      { r: 1, duration: TEMPO.swarm + TEMPO.converge * 0.5, ease: 'sine.inOut' },
-      TEMPO.disperse * 0.6,
+      { r: 1, duration: T.swarm + T.converge * 0.5, ease: 'sine.inOut' },
+      T.disperse * 0.6,
     );
 
     /* swap views at the peak of the explosion, sample the incoming headline */
@@ -560,18 +587,19 @@ export function createParticleEngine(
         }
       },
       undefined,
-      TEMPO.disperse,
+      T.disperse,
     );
 
-    /* create */
-    const convergeAt = TEMPO.disperse + TEMPO.swarm;
-    tl.to(pp, { c: 1, duration: TEMPO.converge, ease: 'power3.out' }, convergeAt);
-    tl.to(pp, { w: 0, duration: TEMPO.converge * 0.6, ease: 'sine.inOut' }, convergeAt + 0.15);
+    /* create — and the stage starts moving UNDER the settling swarm */
+    const convergeAt = T.disperse + T.swarm;
+    tl.call(() => spec.onConverge?.(), undefined, convergeAt);
+    tl.to(pp, { c: 1, duration: T.converge, ease: 'power3.out' }, convergeAt);
+    tl.to(pp, { w: 0, duration: T.converge * 0.6, ease: 'sine.inOut' }, convergeAt + 0.15);
 
     /* reveal: the DOM crossfades in over the settled swarm */
-    const land = convergeAt + TEMPO.converge;
+    const land = convergeAt + T.converge;
     tl.call(() => spec.onLand(), undefined, land);
-    tl.to(pp, { a: 0, duration: TEMPO.reveal + 0.15, ease: 'power1.in' }, land + 0.08);
+    tl.to(pp, { a: 0, duration: T.reveal + 0.15, ease: 'power1.in' }, land + 0.08);
     return true;
   }
 

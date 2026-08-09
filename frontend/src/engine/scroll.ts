@@ -267,6 +267,12 @@ export function initDeck(views: DeckView[], opts: DeckOpts): Deck {
         to.prepareEntrance(); /* view's own choreography hides its pieces */
         return rectOnScreen(to.headline) ? to.headline : null;
       },
+      onConverge() {
+        /* the entrance plays UNDER the settling swarm — the curtain lifts
+           on a stage already in motion, so the hop FEELS shorter than the
+           swarm's own clock */
+        to.playEntrance();
+      },
       onLand() {
         killDomFx();
         const tl = gsap.timeline();
@@ -276,7 +282,6 @@ export function initDeck(views: DeckView[], opts: DeckOpts): Deck {
           { autoAlpha: 1, duration: opts.revealSeconds, ease: 'power1.inOut' },
           0,
         );
-        tl.call(() => to.playEntrance(), undefined, 0);
         landed(i);
       },
       onComplete() {
