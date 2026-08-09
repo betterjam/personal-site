@@ -53,8 +53,8 @@
     },
     "distributed-systems": {
       "theme": "surf-orbit",
-      "renderer": "orbit",
-      "note": "Items as nodes orbiting a hub — the topology is the layout."
+      "renderer": "manual",
+      "note": "The amp service manual: each item is a figure plate whose ink schematic animates its failure drill — the saga chain compensating in reverse, the valve holding the line under load (honest 429), the probe finding the out-of-range test point. Everything fails, and the manual is the plan."
     },
     "iac": {
       "theme": "seafoam-studio",

@@ -1,0 +1,159 @@
+/* MANUAL — the amp service manual (distributed systems). Aged paper,
+   schematic ink, one rubber stamp. Tokens come scoped from surf-orbit:
+   --p-canvas (paper) --p-ink --p-surf-deep (healthy) --p-tortoise
+   (fault) --p-brass (probe). */
+
+.vw-mn {
+  background: var(--p-canvas);
+  color: var(--p-ink);
+  /* the faint ruled grid of a schematic sheet */
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--p-ink) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--p-ink) 4%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.mn-stamp {
+  margin: 0 0 1.1rem;
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .72rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--p-tortoise);
+  border: 2px solid color-mix(in srgb, var(--p-tortoise) 75%, transparent);
+  border-radius: 3px;
+  padding: .38rem .7rem .32rem;
+  transform: rotate(-1.6deg);
+  /* inked unevenly, like a real stamp */
+  mask-image: radial-gradient(140% 120% at 30% 40%, #000 62%, rgba(0, 0, 0, .82));
+}
+
+.mn-headline {
+  margin: 0 0 1rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 4.6vw, 3.4rem);
+  line-height: 1.04;
+  letter-spacing: -.015em;
+  max-width: 22ch;
+}
+
+.mn-summary {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 58ch;
+  color: color-mix(in srgb, var(--p-ink) 82%, var(--p-canvas));
+}
+
+.mn-plates {
+  list-style: none;
+  margin: 2.6rem 0 0;
+  padding: 0;
+}
+
+.mn-plate {
+  display: grid;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  gap: 1.4rem 3rem;
+  align-items: start;
+  padding: 2rem 0 2.2rem;
+  border-top: 1px solid color-mix(in srgb, var(--p-ink) 26%, transparent);
+}
+
+.mn-figcol svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid color-mix(in srgb, var(--p-ink) 22%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--p-canvas) 88%, #fff);
+  padding: .6rem;
+}
+
+.mn-caption {
+  margin: .55rem 0 0;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--p-ink) 62%, var(--p-canvas));
+}
+
+.mn-title {
+  margin: .2rem 0 .6rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: .01em;
+}
+
+.mn-deck {
+  margin: 0 0 1rem;
+  font-family: var(--font-body);
+  font-size: .975rem;
+  line-height: 1.65;
+  max-width: 52ch;
+  color: color-mix(in srgb, var(--p-ink) 88%, var(--p-canvas));
+}
+
+.mn-parts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  letter-spacing: .05em;
+}
+
+.mn-parts-label {
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: color-mix(in srgb, var(--p-ink) 55%, var(--p-canvas));
+  margin-right: .3rem;
+}
+
+.mn-part {
+  border: 1px solid color-mix(in srgb, var(--p-ink) 30%, transparent);
+  border-radius: 2px;
+  padding: .18rem .5rem .14rem;
+}
+
+/* ---------------- schematic ink (SVG classes) ---------------- */
+
+.vw-mn .mn-lna {
+  stroke: var(--p-ink);
+  stroke-width: 1.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.vw-mn .mn-paper { fill: color-mix(in srgb, var(--p-canvas) 88%, #fff); }
+.vw-mn .mn-dash { stroke-dasharray: 4 4; }
+.vw-mn .mn-ok { stroke: var(--p-surf-deep); stroke-width: 2.2; fill: none; stroke-linecap: round; }
+.vw-mn .mn-ok-line { stroke: var(--p-surf-deep); stroke-width: 1.8; fill: none; stroke-linecap: round; }
+.vw-mn .mn-fault { stroke: var(--p-tortoise); stroke-width: 2.2; fill: none; stroke-linecap: round; }
+.vw-mn .mn-brass { stroke: var(--p-brass); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+.vw-mn .mn-brass-fill { fill: var(--p-brass); stroke: none; }
+.vw-mn .mn-txt {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: color-mix(in srgb, var(--p-ink) 78%, var(--p-canvas));
+  stroke: none;
+}
+.vw-mn .mn-mid { text-anchor: middle; }
+.vw-mn .mn-fault-txt { fill: var(--p-tortoise); }
+
+/* dash-drawn paths get their dasharray from JS (draw-on); .mn-dash keeps
+   its pattern only until primed — the drill redraws it as solid-with-gaps
+   again on settle */
+
+@media (max-width: 820px) {
+  .mn-plate { grid-template-columns: 1fr; gap: 1.1rem; }
+  .mn-figcol { max-width: 440px; }
+}

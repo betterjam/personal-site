@@ -39,6 +39,7 @@ import { HUB_ID, buildHub } from './sections/hub';
 import { buildStrips } from './sections/strips';
 import { buildControlPanel } from './sections/controlPanel';
 import { buildStage } from './sections/stage';
+import { buildManual } from './sections/manual';
 import { buildOrbit } from './sections/orbit';
 import { buildShowcase } from './sections/showcase';
 import { buildPatchBay } from './sections/patchBay';
@@ -196,6 +197,7 @@ function markNavActive(viewId: string): void {
 
 const RENDERERS: Record<string, SectionBuilder> = {
   orbit: buildOrbit,
+  manual: buildManual,
   showcase: buildShowcase,
   strips: buildStrips,
   'control-panel': buildControlPanel,
