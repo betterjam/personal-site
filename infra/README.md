@@ -128,14 +128,16 @@ npm test
 
 ```bash
 npx cdk deploy DiegoSiteStack    -c hostedZoneId=<Z...>
-npx cdk deploy DiegoControlStack -c hostedZoneId=<Z...> -c budgetEmail=<you@example.com> -c allowAnon=true
+npx cdk deploy DiegoControlStack -c hostedZoneId=<Z...> -c budgetEmail=<you@example.com>
 ```
 
-`-c allowAnon=true` is what makes `control.diegopalominos.dev` the playground it
-advertises: without it the mutating routes answer 401 to anonymous callers and
-the panel renders read-only (G8). Leave it off for any deployment that is not
-meant to let strangers flip the lights. It lives in `cdk.context.json` alongside
-`expectedAccount`, so the playground keeps its behaviour across deploys.
+`control.diegopalominos.dev` deploys **anonymous read-only** (the `allowAnon`
+default, `false`): anyone may watch the infrastructure live — status, diagram,
+activity, pipelines — but the mutating routes answer 401 without the bearer
+token and the panel renders read-only (G8). `-c allowAnon=true` remains
+available for a deployment that deliberately lets strangers flip the lights;
+the flag lives in `cdk.context.json` alongside `expectedAccount`, so the
+choice sticks across deploys.
 
 Order matters: the control stack imports the site's service/database ARNs.
 `cdk deploy` with the wrong profile fails immediately, before touching
@@ -197,8 +199,8 @@ something is the flag:
 
 | `allowAnon` | `POST /power`, `POST /rules`, `/rules/delete`, `/rules/toggle` | who deploys it this way |
 | --- | --- | --- |
-| `false` (**default**) | 401 unless the request carries the bearer token | anything that is not a public playground |
-| `true` (`-c allowAnon=true`) | anonymous, exactly as before | `control.diegopalominos.dev` — letting visitors flip the lights *is* the demo |
+| `false` (**default**) | 401 unless the request carries the bearer token | `control.diegopalominos.dev` — the public window: watch everything, touch nothing |
+| `true` (`-c allowAnon=true`) | anonymous | a deployment that deliberately makes flipping the lights part of the demo |
 
 The flag is enforced in the **handler**, not in the panel: a UI that hides its
 buttons is a courtesy, and `curl` does not read Angular. `GET /manifest`

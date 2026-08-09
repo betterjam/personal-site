@@ -4,18 +4,19 @@
  * When the API cannot be reached the site keeps working from its bundled
  * snapshot (engine/snapshot.ts), and every surface that says so must say
  * the SAME thing: the infrastructure is asleep, what you are reading is
- * the last snapshot the repository published, and here is the switch.
+ * the last snapshot the repository published, and here is the window.
  * The hub banner, the blog's offline note and the page reading room all
  * build their line from here, so the wording can never drift between them.
  *
  * Deliberately calm and honest: nothing here implies live data, and
- * nothing here reads as an error. Turning the lights off is a feature of
- * this site — the visitor is invited to turn them back on.
+ * nothing here reads as an error. Sleeping is a feature of this site —
+ * and the control plane is anonymous READ-ONLY (G8): anyone may watch
+ * the infrastructure live; only the operator's token flips the switch.
  *
  * DOM only, textContent only — no HTML strings anywhere.
  */
 
-/** The public control plane: the switch, for anyone who wants to flip it. */
+/** The public control plane: the live window, read-only for visitors. */
 export const CONTROL_URL = 'https://control.diegopalominos.dev';
 
 /** What is true right now. */
@@ -25,8 +26,8 @@ export const ASLEEP_LEAD = 'The infrastructure is asleep.';
 export const ASLEEP_SNAPSHOT =
   'You are reading the last snapshot this repo published.';
 
-/** The invitation. */
-export const ASLEEP_CTA = 'Switch it on at control.diegopalominos.dev';
+/** The invitation — to look, not to touch. */
+export const ASLEEP_CTA = 'Watch it sleep, live, at control.diegopalominos.dev';
 
 /** The short form, for places that already have a subject (the blog note). */
 export const ASLEEP_SHORT = 'the infrastructure is asleep — showing the last published snapshot';

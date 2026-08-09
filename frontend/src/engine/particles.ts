@@ -437,6 +437,27 @@ export function createParticleEngine(
     const land = 0.2 + TEMPO.converge + 0.5;
     tl.to(pp, { a: 0, duration: TEMPO.reveal + 0.2, ease: 'power1.in' }, land + 0.1);
 
+    /*
+     * The masthead MOVES while the swarm flies: the banner above it grows
+     * when the asleep line / activity rows land async, and web fonts can
+     * reflow the name. Aim at where the headline IS, not where it was at
+     * sample time — a cheap position check a few times per second, and a
+     * re-sample + re-assign whenever it drifted. The loop dies with the
+     * timeline.
+     */
+    let aimTop = headline.getBoundingClientRect().top;
+    const reAim = (): void => {
+      if (fx.done || !tl.isActive()) return;
+      const top = headline.getBoundingClientRect().top;
+      if (Math.abs(top - aimTop) > 1.5) {
+        aimTop = top;
+        const fresh = samplePoints(headline);
+        if (fresh) assign(particles, fresh, 'tx', 'ty', 1.6);
+      }
+      gsap.delayedCall(0.12, reAim);
+    };
+    gsap.delayedCall(0.12, reAim);
+
     effects.push(fx);
     ensureTicker();
     return { tl, land };
