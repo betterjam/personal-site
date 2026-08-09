@@ -1,6 +1,6 @@
 {
   "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name/contact come from content.json so they cannot drift.",
-  "location": "Valparaíso, Chile · Remote worldwide",
+  "location": "Viña del Mar, Chile · Remote worldwide",
   "website": "https://diegopalominos.dev",
   "summary": "Cloud architect and full-stack software engineer with 12+ years building event-driven systems on AWS. I turn legacy platforms into cloud-native, high-availability architectures: multitenant SaaS, hybrid cloud/on-premise commerce, real-time data pipelines. Founder of Eleva (Startup Chile Ignite 2022 winner, 4th generation). Deep in TypeScript/Node.js, C#/.NET Core, Angular, AWS CDK, and CI/CD automation.",
   "experience": [
@@ -27,7 +27,7 @@
       "type": "Founder",
       "start": "2017",
       "end": "Present",
-      "location": "Valparaíso, Chile · Remote",
+      "location": "Viña del Mar, Chile · Remote",
       "bullets": [
         "Founded and operate a multitenant SaaS platform used by schools for 360-degree performance evaluations and improvement plans; winner of Startup Chile Ignite, 4th generation (2022).",
         "Architected the full platform: C#/.NET modular API on ECS Fargate, Angular SPA on S3 + CloudFront, PostgreSQL on Amazon RDS, all provisioned as code with AWS CDK and Projen.",
@@ -56,7 +56,7 @@
       "type": "Full-time",
       "start": "Jan 2014",
       "end": "Jul 2020",
-      "location": "Valparaíso Region, Chile · Remote",
+      "location": "Viña del Mar, Chile · Remote",
       "bullets": [
         "Delivered front-end projects in Angular (versions 2 through 11) and React for clients across industries.",
         "Built APIs in Node.js, .NET Core, Java JEE, and Spring Boot.",

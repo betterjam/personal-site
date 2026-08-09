@@ -35,7 +35,7 @@ Self-service kiosk commerce at scale. Worked across the C# .NET Core backend —
 *C# · .NET Core · GraphQL · gRPC · Cosmos DB · Angular*
 
 ## Freelance Software Engineer
-**Jan 2014 – Jul 2020 · Valparaíso, Chile · Remote**
+**Jan 2014 – Jul 2020 · Viña del Mar, Chile · Remote**
 
 Six and a half years of professional services across the stack: front-ends in Angular (from version 2 through 11) and React, APIs in Node.js, .NET Core, Java JEE and Spring Boot, unit-tested to high coverage, deployed on AWS architectures I designed and maintained for MVP launches. Smaller builds from this era and since carry the same craft in restraint — for example [Rolling Garage](#/page/rolling-garage), a landing page for a mobile mechanic that had to earn a phone call in three seconds.
 
