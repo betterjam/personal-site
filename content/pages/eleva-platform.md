@@ -1,5 +1,5 @@
 ---
-summary: A multitenant SaaS for schools — 360° performance evaluations and improvement plans. Built since 2017, Startup Chile Ignite in 2020, running on AWS.
+summary: A multitenant SaaS for schools — 360° performance evaluations and improvement plans. Built since 2017, Startup Chile Ignite in 2022, running on AWS.
 repo: betterjam/eleva-modular
 image: asset:eleva-app/process-results-report
 gallery: asset:eleva-landing/eleva-landing-hero|eleva.school, asset:eleva-app/evaluation-stages-config|Evaluation stages — set centrally, overridable per school, asset:eleva-app/org-chart-editor|Org chart editor, asset:eleva-app/role-catalog-tree|Role catalogue, asset:eleva-app/question-bank-catalog|Question bank, asset:eleva-app/generated-evaluation-rubric|A generated rubric, asset:eleva-app/role-template-ai-match|AI-assisted role and template matching, asset:eleva-app/perspective-weights-wizard|Weighting the 360° perspectives, asset:eleva-app/evaluation-answering-360|Answering a 360° evaluation, asset:eleva-app/collaborator-profile-timeline|A collaborator's profile and timeline
@@ -12,7 +12,7 @@ The detail I'm proudest of is the one nobody notices: **a process freezes its co
 
 ## The long build
 
-I started this in 2017. In 2020 it won **Startup Chile Ignite**, which bought the runway to make it a real product instead of a good idea. Everything since has been the unglamorous work that makes software last: multitenancy, tenant-level configuration, migrations that don't lose history, and an operations story that survives a school year.
+I started this in 2017. In 2022 it won **Startup Chile Ignite** (the fourth generation of the program), which bought the runway to make it a real product instead of a good idea. Everything since has been the unglamorous work that makes software last: multitenancy, tenant-level configuration, migrations that don't lose history, and an operations story that survives a school year.
 
 ## The platform underneath
 

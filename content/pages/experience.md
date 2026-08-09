@@ -21,7 +21,7 @@ Spearheading the transformation of a legacy commerce platform into a cloud-nativ
 ## Eleva — Founder & Platform Architect
 **2017 – present · [eleva.school](https://eleva.school)**
 
-Built and still run a multitenant SaaS that schools use for 360° performance evaluations and improvement plans. Started it in 2017; it won **Startup Chile Ignite in 2020**, which turned a good idea into a funded product.
+Built and still run a multitenant SaaS that schools use for 360° performance evaluations and improvement plans. Started it in 2017; in 2022 it won **Startup Chile Ignite** — the program's fourth generation — which turned a good idea into a funded product.
 
 I own the whole stack: the event-driven domain model, the multitenancy, the AWS architecture, the CI/CD, and the operations tooling — including a control panel that renders the platform's architecture live from its deployed CloudFormation and powers environments down outside school hours. Currently folding AI in as an assistant while the functions that decide anything stay deterministic and auditable.
 

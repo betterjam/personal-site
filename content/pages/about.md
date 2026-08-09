@@ -22,7 +22,7 @@ That foundation is why I reach for the primitive rather than the framework when 
 
 ## The short career
 
-Running [Eleva](#/page/eleva-platform) since 2017 (Startup Chile Ignite, 2020), building hybrid commerce platforms where an on-premise register and a cloud storefront have to agree, and doing the occasional small build for people I like. The full version is on the [experience page](#/page/experience).
+Running [Eleva](#/page/eleva-platform) since 2017 (Startup Chile Ignite, 2022), building hybrid commerce platforms where an on-premise register and a cloud storefront have to agree, and doing the occasional small build for people I like. The full version is on the [experience page](#/page/experience).
 
 ## Elsewhere
 
