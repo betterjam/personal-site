@@ -4,7 +4,7 @@ How this site is made — because a site about event sourcing should be able to 
 
 ## One content file, many finishes
 
-Everything you see renders from a single `content.json`. Each section wears a different *finish* — a theme named after a guitar color: Seafoam Studio for the home grid, Candy Apple for the particle swarm, Lake Placid Blue for the event log, three-tone Sunburst for the reading rooms. Swap a theme file and a section changes its clothes without touching a word of content.
+The site's first life was a design exploration: six complete templates, each a whole different site, every one rendering the same `content.json` — the proof that content and finish are separable. The exploration ended and the best of it became this **mixtape**: one deck where each section wears a different *finish* — a theme named after a guitar color: Seafoam Studio for the home grid, Candy Apple for the particle swarm, Lake Placid Blue for the event log, three-tone Sunburst for the reading rooms. The contract survived the redesign: everything still renders from that single `content.json`, and swapping a theme file changes a section's clothes without touching a word of content.
 
 ## The moving parts
 
