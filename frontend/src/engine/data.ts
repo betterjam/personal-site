@@ -17,7 +17,7 @@
  * is missing from BOTH.
  */
 import type { GalleryEntry } from './gallery';
-import { apiSignal, classify, reportApi } from './apiState';
+import { apiAsleep, apiSignal, classify, reportApi } from './apiState';
 import { snapshotPage, snapshotPageList } from './snapshot';
 import contentJson from '../../../content/content.json';
 import roadmapJson from '../../../content/roadmap.json';
@@ -227,6 +227,12 @@ export type ApiRead<T> =
   | { state: 'silent' };
 
 async function apiGet<T>(url: string): Promise<ApiRead<T>> {
+  /* Once the API is KNOWN to be asleep, reads answer 'silent' without a
+     request: navigating the site must not refire doomed fetches (console
+     noise, wasted round-trips). The apiState watcher is the only knocker
+     while asleep, and the moment it hears 'live' the reads resume. Boot
+     is unaffected — state is 'unknown' until something settles. */
+  if (apiAsleep()) return { state: 'silent' };
   let res: Response;
   try {
     res = await fetch(url, {

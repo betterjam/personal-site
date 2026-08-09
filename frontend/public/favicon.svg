@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- real candy apple: translucent red sprayed over a gold base coat -->
+  <circle cx="16" cy="16" r="15" fill="#C79A4B"/>
+  <circle cx="16" cy="16" r="12.4" fill="#B3202C"/>
+  <circle cx="16" cy="16" r="12.4" fill="#7E1119" opacity=".35"/>
+  <circle cx="11.5" cy="10.8" r="4.2" fill="#D6D9DE" opacity=".5"/>
+</svg>
