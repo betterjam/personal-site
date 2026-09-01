@@ -76,10 +76,26 @@ function bullet(text) {
   doc.moveDown(0.25);
 }
 
+/** Highlight bullet: the thesis before the first ": " prints bold, the evidence after it regular. */
+function highlight(text) {
+  const gap = 13;
+  const i = text.indexOf(': ');
+  if (i < 0) return bullet(text);
+  const lead = text.slice(0, i + 2);
+  const rest = text.slice(i + 2);
+  doc.font('Helvetica-Bold').fontSize(10);
+  ensure(doc.heightOfString(text, { width: W - gap, lineGap: 1.5 }) + 2);
+  const y = doc.y;
+  doc.font('Helvetica').text('•', MARGIN, y);
+  doc.font('Helvetica-Bold').text(lead, MARGIN + gap, y, { width: W - gap, lineGap: 1.5, continued: true });
+  doc.font('Helvetica').text(rest, { lineGap: 1.5 });
+  doc.moveDown(0.25);
+}
+
 /* ---- header: name, role, one contact line ---- */
 doc.font('Helvetica-Bold').fontSize(20).text(profile.name, MARGIN, MARGIN, { width: W });
 doc.moveDown(0.15);
-doc.font('Helvetica').fontSize(11.5).text(profile.role, { width: W });
+doc.font('Helvetica').fontSize(11.5).text(resume.role ?? profile.role, { width: W });
 doc.moveDown(0.35);
 const linkedIn = (profile.links ?? []).find((l) => l.label === 'LinkedIn')?.url ?? '';
 const gitHub = (profile.links ?? []).find((l) => l.label === 'GitHub')?.url ?? '';
@@ -95,6 +111,12 @@ doc.fontSize(9.5).text(contact, { width: W, lineGap: 1.5 });
 /* ---- summary ---- */
 heading('Summary');
 doc.font('Helvetica').fontSize(10).text(resume.summary, { width: W, lineGap: 1.5 });
+
+/* ---- selected accomplishments (above the fold, before the first role) ---- */
+if (Array.isArray(resume.highlights) && resume.highlights.length) {
+  heading('Selected Accomplishments');
+  for (const h of resume.highlights) highlight(h);
+}
 
 /* ---- experience ---- */
 heading('Professional Experience');
