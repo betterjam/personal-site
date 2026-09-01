@@ -39,3 +39,5 @@ Dockerised local development with live file sync, a production-like environment 
 ## What it taught me
 
 Hybrid is the honest word for most real commerce: there is nearly always a system that cannot move — a register, an ERP, a box in a back room — and the craft is a seam that tolerates it being slow, duplicated, out of order or briefly offline. Everything I believe about [integrations](#/page/integrations) and [event sourcing](#/page/event-sourcing) was stress-tested here.
+
+The decisions behind all of this — the vhost-per-store isolation, the payment saga and its compensations, the clock the broker couldn't keep — get their own story in [Building Liquor Cart](#/page/building-liquor-cart).
