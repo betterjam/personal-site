@@ -65,31 +65,35 @@ function heading(text) {
   doc.moveDown(0.45);
 }
 
-/** "•" with a hanging indent, page-break safe. */
+/** "**bold**" marks the claim to catch when skimming; the markers never reach the page. */
+const runs = (text) =>
+  text.split('**').map((t, i) => ({ text: t, bold: i % 2 === 1 })).filter((r) => r.text);
+const plain = (text) => text.replaceAll('**', '');
+
+/** "•" with a hanging indent, page-break safe, bold runs kept inline. */
 function bullet(text) {
   const gap = 13;
+  const parts = runs(text);
   doc.font('Helvetica').fontSize(10);
-  ensure(doc.heightOfString(text, { width: W - gap, lineGap: 1.5 }) + 2);
+  ensure(doc.heightOfString(plain(text), { width: W - gap, lineGap: 1.5 }) + 2);
   const y = doc.y;
   doc.text('•', MARGIN, y);
-  doc.text(text, MARGIN + gap, y, { width: W - gap, lineGap: 1.5 });
+  parts.forEach((run, i) => {
+    doc.font(run.bold ? 'Helvetica-Bold' : 'Helvetica');
+    const opts = { width: W - gap, lineGap: 1.5, continued: i < parts.length - 1 };
+    if (i === 0) doc.text(run.text, MARGIN + gap, y, opts);
+    else doc.text(run.text, opts);
+  });
   doc.moveDown(0.25);
 }
 
-/** Highlight bullet: the thesis before the first ": " prints bold, the evidence after it regular. */
+/** Highlight bullet: marked runs print bold; with none marked, the thesis up to the first ": " does. */
 function highlight(text) {
-  const gap = 13;
-  const i = text.indexOf(': ');
-  if (i < 0) return bullet(text);
-  const lead = text.slice(0, i + 2);
-  const rest = text.slice(i + 2);
-  doc.font('Helvetica-Bold').fontSize(10);
-  ensure(doc.heightOfString(text, { width: W - gap, lineGap: 1.5 }) + 2);
-  const y = doc.y;
-  doc.font('Helvetica').text('•', MARGIN, y);
-  doc.font('Helvetica-Bold').text(lead, MARGIN + gap, y, { width: W - gap, lineGap: 1.5, continued: true });
-  doc.font('Helvetica').text(rest, { lineGap: 1.5 });
-  doc.moveDown(0.25);
+  if (!text.includes('**')) {
+    const i = text.indexOf(': ');
+    if (i >= 0) text = `**${text.slice(0, i + 2)}**${text.slice(i + 2)}`;
+  }
+  bullet(text);
 }
 
 /* ---- header: name, role, one contact line ---- */
@@ -114,21 +118,30 @@ doc.font('Helvetica').fontSize(10).text(resume.summary, { width: W, lineGap: 1.5
 
 /* ---- selected accomplishments (above the fold, before the first role) ---- */
 if (Array.isArray(resume.highlights) && resume.highlights.length) {
-  heading('Selected Accomplishments');
+  heading('Career Highlights');
   for (const h of resume.highlights) highlight(h);
 }
 
-/* ---- experience ---- */
+/* ---- experience: current roles in full, older ones under their own heading ---- */
+function roles(jobs) {
+  jobs.forEach((job, i) => {
+    if (i > 0) doc.moveDown(0.55);
+    ensure(48);
+    doc.font('Helvetica-Bold').fontSize(10.5).text(`${job.title}, ${job.company}`, MARGIN, doc.y, { width: W });
+    const meta = [`${job.start} – ${job.end}`, job.type, job.location].filter(Boolean).join('  |  ');
+    doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(meta, { width: W });
+    doc.fillColor('#000').moveDown(0.2);
+    for (const b of job.bullets) bullet(b);
+  });
+}
+
 heading('Professional Experience');
-resume.experience.forEach((job, i) => {
-  if (i > 0) doc.moveDown(0.55);
-  ensure(48);
-  doc.font('Helvetica-Bold').fontSize(10.5).text(`${job.title}, ${job.company}`, MARGIN, doc.y, { width: W });
-  const meta = [`${job.start} – ${job.end}`, job.type, job.location].filter(Boolean).join('  |  ');
-  doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(meta, { width: W });
-  doc.fillColor('#000').moveDown(0.2);
-  for (const b of job.bullets) bullet(b);
-});
+roles(resume.experience.filter((job) => !job.earlier));
+const earlier = resume.experience.filter((job) => job.earlier);
+if (earlier.length) {
+  heading('Earlier Experience');
+  roles(earlier);
+}
 
 /* ---- education (the degree in both languages, per the record) ---- */
 heading('Education');

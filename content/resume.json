@@ -1,48 +1,40 @@
 {
-  "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name/contact come from content.json so they cannot drift. role overrides the headline and highlights renders as Selected Accomplishments (bold thesis up to the first colon). Page budget: two US Letter pages — measured at 13pt spare, so any added line must be paid for.",
+  "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name, role and contact come from content.json so they cannot drift (set role here only to override the headline). Inside summary-level text, **double asterisks** mark a bold run — used for the claim a reader should catch when skimming; a highlight with no asterisks falls back to bolding the thesis up to the first colon. highlights renders as Career Highlights; an experience entry marked \"earlier\": true moves to the Earlier Experience section. Page budget: two US Letter pages — any added line must be paid for.",
   "location": "Viña del Mar, Chile · Remote worldwide",
   "website": "https://diegopalominos.dev",
-  "role": "Cloud Architect & Software Engineer · 13+ years · builds the product, runs the platform",
-  "summary": "Founded Eleva in 2017 for schools that needed staff evaluations they could trust; it won Startup Chile Ignite (generation 4, 2022) and still runs in production. Since 2024 I lead Liquor Cart, which turned on-premise registers and an online store into one system the business runs without a developer. Deployments are pipelines that roll back on their own: Eleva shipped 19 times last month, none failed. I build the product and keep it predictable — usually two jobs, on my systems one.",
+  "summary": "I'm a cloud architect and software engineer with 13+ years of experience building products and running them in production. I founded Eleva and lead architecture and development for Liquor Cart at Electronic Payments. My work combines C#/.NET and Angular development with AWS architecture, production operations and technical leadership.",
   "highlights": [
-    "Built from zero, still in production: Eleva, a multitenant SaaS for schools, since 2017. One CDK stack class and one config record describe dev, qa and prod, so a new environment is a pull request.",
-    "Made delivery predictable: 19 production deploys in 30 days, none failed, a commit live in about nine minutes, and ECS rolls a bad one back itself — every push to main, through three CodePipelines.",
-    "Turned audits into a glance: Eleva's ops panel reads the architecture from deployed CloudFormation, checks drift per resource, and every image carries its commit hash.",
-    "Designed for safe recovery: one RabbitMQ virtual host per Liquor Cart store; a saga reconciles money with orders — voids, refunds, cancels or completes under idempotent keys; unclear cases go to a person.",
-    "Time to update, known by design: an order reaches the broker as it commits and the register once paid, a product is live on the next request once written, a release is budgeted at ten minutes."
+    "Founded **Eleva in 2017** to help schools run consistent staff evaluations. Built and still operate the SaaS platform, which won **Startup Chile Ignite in 2022**.",
+    "Led the replacement of a legacy commerce platform with **Liquor Cart**, connecting an AWS storefront with stores' existing registers. The business can now run online and in-store commerce through one connected system.",
+    "Built Eleva's deployment pipelines to make releases repeatable. The platform completed **19 production deployments in a 30-day period without failures**, with changes live in **about nine minutes**."
   ],
   "experience": [
     {
       "company": "Electronic Payments",
-      "title": "Lead Software Architect & Full-Stack Engineer",
+      "title": "Lead Software Architect and Full-Stack Engineer",
       "type": "Contract",
       "start": "Feb 2024",
       "end": "Present",
       "location": "Remote",
       "bullets": [
-        "Led the replacement of a legacy commerce platform with Liquor Cart: registers stay on-premise, the Magento storefront runs in AWS, and the two operate as one system.",
-        "Designed the middleware on MassTransit over RabbitMQ (Amazon MQ) and wrote nine of every ten lines of its C#. Each store gets its own virtual host, created at onboarding and deleted at retirement.",
-        "Gave the payment saga a clock the broker cannot keep: deadlines live in Postgres, swept every minute. First check two minutes after settlement, then up to four more five minutes apart, then a person.",
-        "Made the consumers safe to repeat: transactional outbox and inbox, deterministic message ids, five retries backing off from a second to five minutes, then an error queue an operator can replay.",
-        "Put an anti-corruption layer in front of the event-sourced order book: 8 event kinds, wire values frozen so the domain can evolve. An unknown kind is acknowledged and dropped, not retried.",
-        "An order is published the moment it commits. The middleware pulls it, acknowledges it back and posts it to the register once paid. A ten-minute cron retries failures and marks rows stalled after thirty.",
-        "Replaced manual deployments with CI/CD to AWS: Magento on ECS, Aurora and FSx, defined in CDK and deployed to dev, qa and prod accounts from one trunk, with prod behind a manual approval.",
-        "Set the conventions a six-person team ships through and mentored its juniors — 178 pull requests merged, 1,600+ unit tests on every push."
+        "The replacement platform had to work with stores' existing on-premise registers. Designed its integration with Magento on AWS and wrote **approximately 90% of the C# middleware**, allowing paid online orders to flow into those registers.",
+        "Built a recovery workflow for orders and payments that fall out of sync. It can complete or cancel orders, void or refund payments, and escalate unresolved cases to an operator. Idempotent processing allows retries without repeating payment actions.",
+        "Kept store integrations separate through dedicated RabbitMQ virtual hosts and automated their setup and removal. Added message retries and an error queue that operators can replay, giving failed integrations a defined recovery path.",
+        "Replaced manual deployments with infrastructure defined in CDK and automated pipelines across dev, QA and production AWS accounts. The team now follows a consistent release process, with approval required before changes reach production.",
+        "Established development conventions and mentored junior engineers to give a **six-person team** a consistent way to deliver changes. The project reached 178 merged pull requests, with **1,600+ unit tests on every push**."
       ]
     },
     {
-      "company": "Eleva (eleva.school)",
-      "title": "Founder & Platform Architect",
-      "type": "Founder",
+      "company": "Eleva",
+      "title": "Founder and Platform Architect",
       "start": "2017",
       "end": "Present",
       "location": "Viña del Mar, Chile · Remote",
       "bullets": [
-        "Founded Eleva in 2017 and still run it in production: a multitenant SaaS for schools' 360-degree performance evaluations and improvement plans. Startup Chile Ignite winner, generation 4 (2022).",
-        "Architected the platform as code with CDK and Projen: a .NET API on ECS Fargate behind API Gateway (no ALB, no NAT to pay for), a 104-component Angular SPA on S3/CloudFront, PostgreSQL 17 on RDS.",
-        "Designed the platform to tolerate being off: at 21:00 every weekday ECS scales to zero and RDS stops, and it comes back on request. Cold starts are routine, not incidents.",
-        "Built the ops control panel: it renders the architecture from deployed CloudFormation, checks drift per resource, tails logs and approves pipeline gates. New stacks appear in it by convention.",
-        "Designed the event-driven domain so tenants stay isolated and results stay auditable: versioned rubrics and scales, a four-stage evaluation lifecycle, and weighted 360° scores that compensate for missing evaluators."
+        "Built Eleva so schools could evaluate staff using consistent, auditable rules and plan improvements. Versioned rubrics preserve the criteria behind each result, and weighted 360-degree scoring adjusts for missing evaluators while each school's data stays separate.",
+        "Defined dev, QA and production in a shared CDK stack with environment-specific configuration. New environments can be added through a pull request, and automated releases include ECS rollback when a deployment fails.",
+        "Built an operations panel so infrastructure reviews could use the system's deployed state. Reviewers can see architecture and configuration drift from CloudFormation, then trace each release to its source code through commit-tagged images.",
+        "Designed the .NET application to tolerate scheduled shutdowns, then configured ECS and RDS to stop on weekday evenings and restart on request. This avoids leaving compute resources running through idle periods."
       ]
     },
     {
@@ -51,10 +43,10 @@
       "type": "Contract",
       "start": "Apr 2022",
       "end": "Aug 2023",
-      "location": "Boca Raton, Florida, USA · Remote",
+      "location": "Remote, USA",
+      "earlier": true,
       "bullets": [
-        "Worked across the C# .NET Core backend of a self-service kiosk commerce platform (GraphQL, gRPC, Cosmos DB data models), from requirements gathering through code review to debugging in production.",
-        "Built the front-end of the Clover SMB product in Angular 13."
+        "Worked on the C#/.NET Core backend of a self-service kiosk platform, from requirements through production troubleshooting. Built the Angular 13 frontend for the Clover SMB product."
       ]
     },
     {
@@ -63,20 +55,22 @@
       "type": "Full-time",
       "start": "Jan 2014",
       "end": "Jul 2020",
-      "location": "Viña del Mar, Chile · Remote",
+      "location": "Remote",
+      "earlier": true,
       "bullets": [
-        "Ran a freelance practice for six and a half years: front-ends in Angular and React, APIs in Node.js, .NET Core and Java, and the AWS architectures clients launched their MVPs on."
+        "Helped clients launch MVPs by building their applications and AWS infrastructure, using Angular, React, Node.js, .NET Core and Java."
       ]
     },
     {
-      "company": "Centro Científico Tecnológico de Valparaíso (CCTVal)",
+      "company": "Centro Científico Tecnológico de Valparaíso",
       "title": "PHP Full-Stack Developer",
       "type": "Part-time",
       "start": "Feb 2013",
       "end": "Jul 2014",
-      "location": "Valparaíso, Chile · On-site",
+      "location": "On-site",
+      "earlier": true,
       "bullets": [
-        "Developed the SQL databases (PHP, ORM) behind a scientific computing centre's research tooling."
+        "Worked on SQL databases and PHP/ORM code for research tools at CCTVal, a scientific computing center."
       ]
     }
   ],
@@ -89,13 +83,10 @@
     }
   ],
   "skills": [
-    { "group": "Cloud & Infrastructure", "items": "AWS (ECS Fargate, RDS, Aurora, FSx, S3, CloudFront, API Gateway, ElastiCache, OpenSearch, Amazon MQ, CloudFormation), AWS CDK, cdk-nag, Docker, Infrastructure as Code" },
-    { "group": "Architecture", "items": "Event-driven architecture, event sourcing, CQRS, sagas, domain-driven design, transactional outbox, modular monoliths and microservices, multitenancy, hybrid cloud, distributed systems" },
-    { "group": "Operations & Testing", "items": "Environment parity, drift detection, approval gates, observability (OpenTelemetry), scheduled power-down, Playwright end-to-end tests, xunit and Jest, Veracode scans" },
-    { "group": "Backend", "items": "C#, .NET (Core to 9), Marten, MassTransit, EF Core, Polly, YARP, Node.js, TypeScript, NestJS, Java (JEE, Spring Boot), PHP, GraphQL, gRPC, REST" },
-    { "group": "Frontend", "items": "Angular (2–19), RxJS, React, TypeScript, Tailwind (Hyvä), GSAP" },
-    { "group": "Data & Messaging", "items": "PostgreSQL, MySQL, Aurora, Cosmos DB, Redis, OpenSearch, RabbitMQ, SymmetricDS" },
-    { "group": "Commerce", "items": "Magento 2.4, Hyvä, custom checkout, POS integration (XT), delivery (DoorDash), payments (TokenEx, RapidConnect, KMS envelope encryption), regulated-category compliance (OHLQ)" }
+    { "group": "Cloud", "items": "AWS (ECS Fargate, RDS, Aurora, S3, CloudFront, API Gateway, Amazon MQ), CDK, Projen, Docker" },
+    { "group": "Development", "items": "C#, .NET, Angular, TypeScript, React, Node.js, GraphQL, gRPC, MassTransit, Marten, EF Core" },
+    { "group": "Architecture and data", "items": "Event-driven systems, event sourcing, CQRS, sagas, multitenancy, PostgreSQL, MySQL, Cosmos DB, Redis, RabbitMQ" },
+    { "group": "Delivery and commerce", "items": "CI/CD, OpenTelemetry, Playwright, xUnit, Magento, Hyvä, POS integration, DoorDash, TokenEx, RapidConnect" }
   ],
   "languages": "Spanish (native) · English (professional working proficiency)"
 }
