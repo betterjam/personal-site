@@ -83,10 +83,11 @@
     }
   ],
   "skills": [
-    { "group": "Cloud", "items": "AWS (ECS Fargate, RDS, Aurora, S3, CloudFront, API Gateway, Amazon MQ), CDK, Projen, Docker" },
-    { "group": "Development", "items": "C#, .NET, Angular, TypeScript, React, Node.js, GraphQL, gRPC, MassTransit, Marten, EF Core" },
-    { "group": "Architecture and data", "items": "Event-driven systems, event sourcing, CQRS, sagas, multitenancy, PostgreSQL, MySQL, Cosmos DB, Redis, RabbitMQ" },
-    { "group": "Delivery and commerce", "items": "CI/CD, OpenTelemetry, Playwright, xUnit, Magento, Hyvä, POS integration, DoorDash, TokenEx, RapidConnect" }
+    { "group": "Cloud", "items": "AWS (ECS Fargate, RDS, Aurora, FSx, S3, CloudFront, API Gateway, ElastiCache, Amazon MQ, CloudFormation), CDK, cdk-nag, Projen, Docker, infrastructure as code" },
+    { "group": "Development", "items": "C#, .NET (Core to 9), Angular (2–19), RxJS, TypeScript, React, Node.js, NestJS, Java (JEE, Spring Boot), PHP, GraphQL, gRPC, REST, MassTransit, Marten, EF Core, Polly, YARP" },
+    { "group": "Architecture and data", "items": "Event-driven systems, event sourcing, CQRS, sagas, domain-driven design, transactional outbox, modular monoliths and microservices, multitenancy, hybrid cloud, distributed systems, PostgreSQL, MySQL, Cosmos DB, Redis, OpenSearch, RabbitMQ, SymmetricDS" },
+    { "group": "Delivery and operations", "items": "CI/CD, environment parity, drift detection, approval gates, scheduled power-down, OpenTelemetry, Playwright, xUnit, Jest, Veracode scans" },
+    { "group": "Commerce", "items": "Magento 2.4, Hyvä, Tailwind, custom checkout, POS integration, DoorDash, TokenEx, RapidConnect, KMS envelope encryption, regulated-category compliance (OHLQ)" }
   ],
   "languages": "Spanish (native) · English (professional working proficiency)"
 }
