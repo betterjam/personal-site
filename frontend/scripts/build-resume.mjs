@@ -123,10 +123,19 @@ if (Array.isArray(resume.highlights) && resume.highlights.length) {
 }
 
 /* ---- experience: current roles in full, older ones under their own heading ---- */
+/** Approximate height of a whole role block, so a keepTogether role moves to the next page intact. */
+function roleHeight(job) {
+  doc.font('Helvetica').fontSize(10);
+  const body = job.bullets.reduce(
+    (h, b) => h + doc.heightOfString(plain(b), { width: W - 13, lineGap: 1.5 }) + doc.currentLineHeight(true) * 0.25,
+    0,
+  );
+  return 40 + body;
+}
 function roles(jobs) {
   jobs.forEach((job, i) => {
     if (i > 0) doc.moveDown(0.55);
-    ensure(48);
+    ensure(job.keepTogether ? roleHeight(job) : 48);
     doc.font('Helvetica-Bold').fontSize(10.5).text(`${job.title}, ${job.company}`, MARGIN, doc.y, { width: W });
     const meta = [`${job.start} – ${job.end}`, job.type, job.location].filter(Boolean).join('  |  ');
     doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(meta, { width: W });
