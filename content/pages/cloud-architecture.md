@@ -16,6 +16,12 @@ Here's what that means in practice, with the receipts.
 
 Most interesting systems have a piece that cannot move to the cloud. In [Liquor Cart](#/page/commerce-replatform) it's the registers on the shop floor: database-level replication carries data across the boundary, and a custom event-driven middleware turns two incompatible worlds into one coherent domain. Cloud architecture that assumes greenfield is architecture for slide decks.
 
+## Tradeoffs, made on purpose
+
+Architecture is deciding what a system will be bad at, and writing it down. Liquor Cart chose **Magento** because it's almost headless — the catalog, checkout and admin come ready, and the business can run that admin without a developer — and accepted that Magento is hard to deploy and weak at traceability. So the design doesn't ask it to be good at either: the heavy, delicate parts (orders, payments, point-of-sale sync) live in a custom event-sourced middleware that adds resilience, security and an audit trail, and the whole platform is standardized as code so every environment is identical, patchable and schedulable. Eleva made the opposite bet: a **modular monolith** instead of microservices, because one engineer runs it, with module and tenant scopes keeping the boundaries honest and a multitenant configuration layer letting it take new features without a rewrite.
+
+In both, observability and security came with the architecture rather than after it: traces that cross service boundaries, alarms that mean something, least privilege by default. [The experience page](#/page/experience) has the receipts.
+
 ## Cost is a design constraint, not a monthly surprise
 
 The line I'm known for is **"the cheapest instance is the one that's off."** Eleva's environments power down outside school hours on schedule rules the team can read. That isn't a FinOps afterthought bolted on later; it's a shape the system was designed to have — services that tolerate being stopped, state that survives it, and startup rehearsed every single day.
@@ -38,6 +44,6 @@ Making something safe enough to hand to strangers is the clearest architecture e
 
 ## The foundation
 
-B.Eng. in Computer Science from **Universidad Técnica Federico Santa María**, Chile — [the fundamentals](#/page/about) that make all of the above reasoning rather than pattern-matching. Since 2017 I've been running a production platform I designed, which is a different education entirely.
+B.Eng. in Computer Systems Engineering from **Universidad Técnica Federico Santa María**, Chile — [the fundamentals](#/page/about) that make all of the above reasoning rather than pattern-matching. Since 2017 I've been running a production platform I designed, which is a different education entirely.
 
 Related: [Infrastructure as Code](#/page/iac), [Distributed Systems](#/page/distributed-systems), [Event Sourcing](#/page/event-sourcing).

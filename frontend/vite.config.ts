@@ -280,6 +280,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:3000',
+      /* resume.pdf is a static file the NestJS app serves from app/public in
+         production; proxy it in dev too so the Experience page's link works */
+      '/resume.pdf': 'http://localhost:3000',
     },
     fs: {
       // content/ and themes/ JSON live one level above the vite root.

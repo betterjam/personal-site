@@ -1,12 +1,12 @@
 {
-  "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name, role and contact come from content.json so they cannot drift (set role here only to override the headline). Inside summary-level text, **double asterisks** mark a bold run — used for the claim a reader should catch when skimming; a highlight with no asterisks falls back to bolding the thesis up to the first colon. highlights renders as Career Highlights; an experience entry marked \"earlier\": true moves to the Earlier Experience section. An entry marked \"keepTogether\": true never splits across pages. Page budget: two US Letter pages — any added line must be paid for.",
+  "note": "Source of truth for the ATS résumé PDF. frontend/scripts/build-resume.mjs renders it to app/public/resume.pdf on every build; name, role and contact come from content.json so they cannot drift (set role here only to override the headline). Inside summary-level text, **double asterisks** mark a bold run — used for the claim a reader should catch when skimming; a highlight with no asterisks falls back to bolding the thesis up to the first colon. highlights renders as Career Highlights; an experience entry marked \"earlier\": true moves to the Earlier Experience section. An entry marked \"keepTogether\": true never splits across pages; one without it may split between bullets, and its title repeats with (continued) at the top of the next page. Page budget: two US Letter pages — any added line must be paid for. Voice: every bullet names the business problem, the decision or tradeoff, and the outcome. Length: the summary stays under six lines and every bullet under three; the long version lives on the site's Experience page.",
   "location": "Viña del Mar, Chile · Remote worldwide",
   "website": "https://diegopalominos.dev",
-  "summary": "Hands-on Software Architect and Engineer with 13+ years of experience designing, building, and operating production systems. Founded and built Eleva, a multi-tenant SaaS platform developed end-to-end, from business workflows and application architecture to AWS infrastructure and automated delivery. At Electronic Payments, designed distributed, event-driven systems and introduced engineering practices that improved deployment reliability, auditability, and consistency across environments. I combine deep software engineering expertise with architectural ownership and a strong focus on delivering reliable systems that solve real business problems.",
+  "summary": "Cloud Architect and hands-on engineer, 13+ years building and running production systems, on AWS since 2014. I start from the business problem and make the tradeoffs explicit: at Electronic Payments I chose Magento as the storefront, moved orders, payments and POS sync into a distributed, event-driven middleware so nothing on the shop floor waits on the cloud, and standardized the platform as infrastructure as code. Founded Eleva, a multi-tenant SaaS on AWS, built end to end as a modular monolith.",
   "highlights": [
-    "**Built a complete SaaS product:** founded Eleva and took it from idea to production as its sole architect and engineer, from business workflows to AWS operations. It won **Start-Up Chile Ignite (Generation 4) in 2022**.",
-    "**Architected a distributed commerce system:** designed Liquor Cart's event-driven integration between an AWS storefront and stores' on-premise registers, letting the business run online and in-store sales as one system.",
-    "**Changed how a company ships software:** introduced Electronic Payments' first CI/CD pipelines and environment parity from local to production. The resulting patterns became references reused by other projects."
+    "**Built a complete SaaS product:** founded Eleva and, as its sole architect and engineer, took it from idea to production on AWS as a modular monolith. Won **Start-Up Chile Ignite (2022)**.",
+    "**Unified a retailer's online and in-store sales:** chose Magento as the almost-headless storefront; moved orders, payments and POS sync to an event-driven AWS middleware no register waits on.",
+    "**Changed how a company ships:** Magento was hard to deploy, so I standardized it as infrastructure as code (CDK) and built the **company's first CI/CD pipelines**, now reused by other projects."
   ],
   "experience": [
     {
@@ -17,12 +17,14 @@
       "end": "Present",
       "location": "Remote",
       "bullets": [
-        "Designed Liquor Cart as a **distributed, event-driven POS integration** using domain-driven design. Services exchange messages over RabbitMQ so paid online orders reach stores' on-premise registers in real time.",
-        "Introduced **event sourcing with Marten**, making the event store the source of truth for the catalog. Every business event is preserved, so product and price changes can be traced and audited.",
-        "Built the AWS middleware coordinating cloud services, existing POS systems and the Magento storefront, writing **about 90% of the C# code**. A dedicated RabbitMQ virtual host per store contains failures to one store.",
-        "Designed payment recovery for orders and payments that fall out of sync. Idempotent steps complete or cancel orders, void or refund payments, and escalate unresolved cases; retries and a replayable error queue cover the rest.",
-        "Introduced the **company's first CI/CD pipelines**, with CDK-defined infrastructure and parity across local, Dev, QA and Production. Releases became reproducible and consistent, with approval required before production.",
-        "These architectures and pipelines became **reference implementations reused by other projects**. Set engineering conventions and mentored a **six-person team**: 178 merged pull requests, 1,600+ unit tests on every push."
+        "Liquor Cart: **on-premise registers must keep selling when the cloud fails**. Chose Magento as the storefront; moved orders, payments and POS sync to an event-driven AWS middleware.",
+        "Built the .NET middleware for **resilience**: domain-driven services over RabbitMQ, retries, a replayable error queue, and a virtual host per store so a failure stays in that store. Wrote **about 90% of the C#**.",
+        "Preferred a custom event-sourced layer (Marten) over plugins for **security and traceability**: idempotent payment actions, tokenized card data, and attributable catalog and order changes.",
+        "Money and orders can disagree, so designed **payment recovery as a saga**: idempotent steps complete or cancel orders, void or refund payments, and escalate unresolved cases to a person.",
+        "Standardized hard-to-deploy Magento as **infrastructure as code (CDK)** with the **company's first CI/CD pipelines**: identical, auditable, schedulable and patchable environments from local to production.",
+        "Made the platform operable by the business: 40+ admin modules onboard **every new store, about 20,000 products, in around ten minutes**, and inspect or re-sync the integration without a developer.",
+        "Set **observability and security as defaults**: OpenTelemetry traces, alarms, least-privilege IAM, encrypted secrets. The architecture and pipelines became **reference implementations other projects reuse**.",
+        "Made a **six-person team** productive through conventions, reviews and mentoring, so juniors can touch production safely: 178 merged pull requests, **1,600+ unit tests on every push**."
       ]
     },
     {
@@ -32,14 +34,15 @@
       "end": "Present",
       "location": "Viña del Mar, Chile · Remote",
       "bullets": [
-        "**Designed, built and took to production the entire SaaS platform**: frontend, backend, data model, AWS architecture, infrastructure, automation and operations. Eleva digitizes performance evaluation for schools.",
-        "Automates 360-degree evaluations with versioned rubrics that preserve the criteria behind each result, per-school multitenancy, access controls, evidence management, and traceable, reproducible evaluation processes.",
-        "Defined AWS infrastructure as code (CDK) with reproducible dev, QA and production environments and CI/CD with automatic ECS rollback: **19 production deployments in 30 days without failures**, each live in **about nine minutes**.",
-        "Keeps operating costs under control: the .NET application tolerates scheduled shutdowns, so ECS and RDS stop outside school hours. An operations panel shows configuration drift and traces each release to its commit.",
-        "Won **Start-Up Chile Ignite (Generation 4, 2022)**, which funded the move from prototype to product."
+        "**Designed, built and took the entire SaaS platform to production**: frontend, backend, data model, AWS infrastructure, automation and operations, ready to scale out on ECS Fargate.",
+        "Eleva runs whole-school staff evaluations: it generates a **200-person school's evaluations in about five minutes** and consolidates the school's progress in **under 20 seconds**.",
+        "Chose a **modular monolith** over microservices for a one-engineer platform: explicit module scopes and a multi-tenant configuration layer, so new features land as a module or tenant override, not a rewrite.",
+        "Evaluations affect careers, so a 360-degree process **freezes its configuration at creation**: results keep the rubric they were judged by, with per-school access scopes and evidence management.",
+        "Innovating with schools demanded agile delivery: environments as code (CDK) and CI/CD with ECS auto-rollback. **19 production deployments in 30 days, none failed**, each live in **about nine minutes**.",
+        "Designed for low operating cost: the .NET application tolerates scheduled shutdowns, so ECS and RDS stop outside school hours. An operations panel shows configuration drift and traces each release to its commit.",
+        "Folding AI in as an assistant, not a judge: it drafts feedback and summarizes evidence, while scores, stage transitions and reports stay deterministic and auditable."
       ],
-      "type": "Own company, alongside contract roles",
-      "keepTogether": true
+      "type": "Own company · Start-Up Chile Ignite 2022"
     },
     {
       "company": "GRUBBRR",
@@ -47,10 +50,10 @@
       "type": "Contract",
       "start": "Apr 2022",
       "end": "Aug 2023",
-      "location": "Remote, USA",
+      "location": "Boca Raton, FL · Remote",
       "earlier": true,
       "bullets": [
-        "Worked on the C#/.NET Core backend of a self-service kiosk platform, from requirements through production troubleshooting. Built the Angular 13 frontend for the Clover SMB product."
+        "Worked on the C#/.NET Core backend (GraphQL, gRPC, Cosmos DB) of a self-service kiosk platform, from requirements through production troubleshooting. Built the Angular 13 frontend for Clover SMB."
       ]
     },
     {
@@ -62,7 +65,7 @@
       "location": "Remote",
       "earlier": true,
       "bullets": [
-        "Helped clients launch MVPs by building their applications and AWS infrastructure, using Angular, React, Node.js, .NET Core and Java."
+        "Helped clients launch MVPs: apps in Angular, React, Node.js, .NET Core, Java and Spring Boot, deployed on AWS infrastructure I designed and maintained."
       ]
     },
     {
@@ -71,7 +74,7 @@
       "type": "Part-time",
       "start": "Feb 2013",
       "end": "Jul 2014",
-      "location": "On-site",
+      "location": "Valparaíso, Chile · On-site",
       "earlier": true,
       "bullets": [
         "Worked on SQL databases and PHP/ORM code for research tools at CCTVal, a scientific computing center."
@@ -89,23 +92,23 @@
   "skills": [
     {
       "group": "Languages and frameworks",
-      "items": "C#, .NET (Core to 9), TypeScript, Angular (2–19), RxJS, Node.js, React, MassTransit, Marten, EF Core"
+      "items": "C#, .NET (Core through 9), TypeScript, Angular (2–19), RxJS, Node.js, React, MassTransit, Marten, EF Core"
     },
     {
-      "group": "Cloud and delivery",
-      "items": "AWS (ECS Fargate, RDS, Aurora, S3, CloudFront, API Gateway, Amazon MQ, CloudFormation), CDK, Infrastructure as Code, CI/CD, Docker, environment parity, OpenTelemetry"
+      "group": "Cloud and infrastructure",
+      "items": "AWS (ECS Fargate, RDS, Aurora, ElastiCache, S3, CloudFront, API Gateway, Amazon MQ, Secrets Manager, CloudFormation), CDK, Projen, Infrastructure as Code, Docker"
+    },
+    {
+      "group": "Delivery, security and observability",
+      "items": "CI/CD, environment parity, approval gates, scheduled power-down, patching, drift detection, least-privilege IAM, KMS encryption, Veracode, OpenTelemetry, CloudWatch"
     },
     {
       "group": "Architecture",
-      "items": "Distributed systems, Domain-Driven Design, Event-Driven Architecture, Event Sourcing, CQRS, sagas, transactional outbox, idempotency, multitenancy, hybrid cloud"
+      "items": "Distributed systems, modular monoliths, clean architecture, Domain-Driven Design, Event-Driven Architecture, Event Sourcing, CQRS, sagas, transactional outbox, idempotency, multitenancy, hybrid cloud"
     },
     {
-      "group": "Data and messaging",
-      "items": "PostgreSQL, RabbitMQ, Redis, OpenSearch, SymmetricDS"
-    },
-    {
-      "group": "Quality and commerce",
-      "items": "xUnit, Playwright, Jest, Magento 2.4, POS integration, payment gateways (TokenEx, RapidConnect)"
+      "group": "Data, messaging, commerce and testing",
+      "items": "PostgreSQL, RabbitMQ, Redis, OpenSearch, SymmetricDS, Magento 2.4, Hyvä, POS integration, payment gateways (TokenEx, RapidConnect), xUnit, Playwright, Jest"
     }
   ],
   "languages": "Spanish (native) · English (professional working proficiency)"

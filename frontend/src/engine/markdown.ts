@@ -29,12 +29,13 @@
  *   unpublished slug, a malformed repo reference and an unresolvable
  *   picture all simply vanish).
  *   inline — **bold**, *italic*, `code` (verbatim), [text](url) links
- *   whose url starts with https:// mailto: or '#'; any other scheme
- *   renders the whole [text](url) as literal text. Unclosed markers
+ *   whose url starts with https:// mailto: '#' or a same-origin '/' path
+ *   (a single slash: protocol-relative '//host' stays out); any other
+ *   scheme renders the whole [text](url) as literal text. Unclosed markers
  *   render literally. Links never nest inside link text.
  */
 
-const SAFE_HREF = /^(?:https:\/\/|mailto:|#)/i;
+const SAFE_HREF = /^(?:https:\/\/|mailto:|#|\/(?!\/))/i;
 const LINK_RE = /^\[([^\]]*)\]\(([^()\s]+)\)/;
 const UL_RE = /^-\s+/;
 const OL_RE = /^\d+\.\s+/;
@@ -161,7 +162,7 @@ function appendInline(parent: Node, src: string, allowLinks: boolean): void {
       if (m && SAFE_HREF.test(m[2])) {
         flush();
         const a = document.createElement('a');
-        a.href = m[2]; /* gated by SAFE_HREF: https:// mailto: '#' only */
+        a.href = m[2]; /* gated by SAFE_HREF: https:// mailto: '#' or a same-origin '/' path */
         appendInline(a, m[1], false);
         parent.appendChild(a);
         i += m[0].length;

@@ -41,7 +41,7 @@ At the border with the outside world sits an **anti-corruption layer** with a sm
 
 The runtime discipline would be theater if releases were chaos, so they aren't: a release is **zero-restart** — the web server follows a symlink swap — and enters maintenance only if the schema actually changed, on a countdown budgeted at ten minutes. The infrastructure is [CDK all the way down](#/page/iac): dev, qa and prod in separate AWS accounts, fed from one trunk, with production behind a manual approval. Every push runs 1,600+ unit tests; the work landed as 178 pull requests from a six-person team whose juniors I mentor — on conventions designed so they can touch production safely.
 
-And because a platform the business can't operate is just a developer with extra steps, the [40+ custom admin modules](#/page/commerce-replatform) let the business onboard stores, inspect the integration and re-sync it from the admin they already live in.
+And because a platform the business can't operate is just a developer with extra steps, the [40+ custom admin modules](#/page/commerce-replatform) let the business onboard stores, inspect the integration and re-sync it from the admin they already live in. Every new store, with a catalog of about 20,000 products, is onboarded in around ten minutes.
 
 ## What the numbers mean
 

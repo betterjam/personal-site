@@ -1,5 +1,5 @@
 ---
-summary: Where I've worked and what I built there — platforms that stay up, integrations that hold, and infrastructure with a power button.
+summary: Where I've worked, the business problems I was hired to solve, and the tradeoffs I made solving them — platforms that stay up, integrations that hold, and infrastructure with a power button.
 ---
 # Experience
 
@@ -8,24 +8,28 @@ summary: Where I've worked and what I built there — platforms that stay up, in
 ## Electronic Payments — Lead Software Architect & Full-Stack Engineer
 **Feb 2024 – present · Contract · Remote**
 
-Spearheading the transformation of a legacy commerce platform into a cloud-native, event-driven architecture — real-time data processing, high availability, and a foundation ready for AI integration. The flagship build is [Liquor Cart](#/page/commerce-replatform), a hybrid platform for a retailer whose registers live on the shop floor and whose storefront lives in AWS.
+The business problem came first: a liquor retailer sells on the shop floor and online, the registers on the floor are never moving to the cloud, and a register that stops selling because a cloud service hiccuped is a liability, not a system. Leading the transformation of a legacy commerce platform into a cloud-native, event-driven one therefore started with a tradeoff — choose **Magento** as the storefront, because it is almost headless and the business can run its admin alone, and move the heavy, delicate parts (orders, payments, point-of-sale sync) into a middleware designed for exactly that. The result is [Liquor Cart](#/page/commerce-replatform); the decisions behind it are in [Building Liquor Cart](#/page/building-liquor-cart).
 
-- Designed and deployed a fully automated AWS eCommerce infrastructure with CDK and Projen: ECS clusters, RDS (PostgreSQL/MySQL), Redis, OpenSearch, RabbitMQ.
-- Built a custom asynchronous middleware in .NET Core that lets an on-premise POS and Magento operate as one system — event-driven, domain-driven, an event-sourced catalog behind CQRS.
-- Deployed SymmetricDS clustered on AWS for robust database-level synchronization across the cloud/on-premise boundary.
-- Architected a modern CI/CD pipeline for a traditionally manual project — deployments went from ceremony to routine, with operational visibility to match.
-- Built the workflows and standards that let junior developers contribute meaningfully to a complex system; hands-on architect, full-stack engineer, DevOps lead, and mentor in one seat.
+- **Built the middleware for resilience.** Domain-driven .NET services exchanging messages over RabbitMQ (MassTransit), one virtual host per store so a store's failure stays in that store, retries with a replayable error queue, a payment saga that reconciles money with orders and escalates to a person when the facts don't resolve, and SymmetricDS clustered on AWS carrying database-level replication across the cloud/on-premise boundary.
+- **Preferred a custom event-sourced layer over plugins to add security and traceability.** With Marten, the event store is the source of truth for catalog and orders: payment actions run under idempotent keys, card data stays tokenized at the gateway, and every change is attributable.
+- **Magento was hard to deploy, so I standardized it as code.** CDK and Projen define identical local, dev, QA and production environments — ECS, Aurora and RDS, Redis, OpenSearch, RabbitMQ — which bought auditability (the diff is the code review), scheduled services, routine patching and dev parity in a single move.
+- **Made the platform operable by the business.** 40+ custom admin modules let it onboard every new store, about 20,000 products included, in around ten minutes, and inspect or re-sync the integration without a developer.
+- **Established observability and security as defaults** for the applications I built: OpenTelemetry traces that cross service boundaries, alarms that mean something, least-privilege IAM and encrypted secrets.
+- **Changed how the company ships.** Its first CI/CD pipelines, with approval before production; the architecture and the pipelines became reference implementations other projects reuse.
+- **Made a six-person team productive on a complex system** through conventions, reviews and mentoring — 178 merged pull requests, 1,600+ unit tests on every push.
 
-*AWS · CDK · Projen · .NET Core · Magento 2 · Hyvä · RabbitMQ · PostgreSQL · Redis · OpenSearch · SymmetricDS*
+*AWS · CDK · Projen · .NET · Magento 2 · Hyvä · RabbitMQ · Marten · PostgreSQL · Redis · OpenSearch · SymmetricDS · OpenTelemetry*
 
 ## Eleva — Founder & Platform Architect
 **2017 – present · [eleva.school](https://eleva.school)**
 
-Built and still run a multitenant SaaS that schools use for 360° performance evaluations and improvement plans. Started it in 2017; in 2022 it won **Startup Chile Ignite** — the program's fourth generation — which turned a good idea into a funded product.
+Built and still run a multitenant SaaS that schools use for 360° performance evaluations and improvement plans: it generates the evaluations for a whole school of 200 staff in about five minutes, consolidates everyone's progress in under 20 seconds, and is ready to scale out on ECS. Started it in 2017; in 2022 it won **Startup Chile Ignite** — the program's fourth generation — which turned a good idea into a funded product.
 
-I own the whole stack: the event-driven domain model, the multitenancy, the AWS architecture, the CI/CD, and the operations tooling — including a control panel that renders the platform's architecture live from its deployed CloudFormation and powers environments down outside school hours. Currently folding AI in as an assistant while the functions that decide anything stay deterministic and auditable.
+The architectural tradeoff was a **modular monolith** instead of microservices: one deployable a single engineer can run, with explicit module scopes and a multitenant layer where each school's configuration sits over central defaults. New features arrive as a module or a tenant override rather than a rewrite, which is what let the product keep adapting. Innovating with schools demanded an agile delivery strategy — small releases, every push through a pipeline with automatic rollback — so the platform shipped 19 production deployments in 30 days, none failed, each live in about nine minutes.
 
-*TypeScript · .NET · Angular · AWS (ECS, RDS, CDK) · event sourcing · multitenancy*
+I own the whole stack: the domain model, the multitenancy, the AWS architecture as code, the CI/CD, and the operations tooling — including a control panel that renders the platform's architecture live from its deployed CloudFormation and powers environments down outside school hours. Currently folding AI in as an assistant while the functions that decide anything stay deterministic and auditable.
+
+*TypeScript · .NET · Angular · AWS (ECS, RDS, CDK) · modular monolith · event sourcing · multitenancy*
 
 ## GRUBBRR — Senior Full-Stack Software Engineer
 **Apr 2022 – Aug 2023 · Contract · Boca Raton, FL (remote)**
@@ -53,7 +57,5 @@ First professional seat, inside a scientific computing center: PHP, ORMs and SQL
 **Ingeniería de Ejecución en Sistemas Computacionales — Universidad Técnica Federico Santa María (UTFSM)**, Valparaíso, Chile.
 
 In English: **Bachelor's degree in Computer Systems Engineering** — from an engineering school in the old sense: theory first, no sympathy for hand-waving. [Why that still matters](#/page/about).
-
----
 
 *Prefer the long version? [LinkedIn](https://www.linkedin.com/in/diego-palominos/) has the formal record; [GitHub](https://github.com/betterjam) has the code — or take the [ATS-friendly PDF](/resume.pdf) with you.*

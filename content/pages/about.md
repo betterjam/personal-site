@@ -1,6 +1,6 @@
 # About
 
-I'm Diego — a **cloud architect** who still writes the code, building event-driven systems on AWS and spending the quiet hours chasing vintage guitar tones.
+I'm Diego — a **cloud architect** who still writes the code, building event-driven systems on AWS and chasing vintage guitar tones in my spare time.
 
 What I get paid to decide is architectural: where state lives, what happens when a boundary fails, what a system costs on a quiet Sunday, and whether someone else can operate it at 3 a.m. [The architecture page](#/page/cloud-architecture) makes that case with receipts.
 
@@ -14,7 +14,7 @@ Most of my work lives where reliability is earned, not assumed: message queues w
 
 ## Where the foundation comes from
 
-**B.Eng. in Computer Science — Universidad Técnica Federico Santa María (UTFSM), Chile.**
+**B.Eng. in Computer Systems Engineering — Universidad Técnica Federico Santa María (UTFSM), Chile.**
 
 UTFSM is an engineering school in the old sense: theory first, and no sympathy for hand-waving. Data structures, algorithms, operating systems, networks, databases and the mathematics under all of it — taught as things you must be able to derive, not merely use.
 

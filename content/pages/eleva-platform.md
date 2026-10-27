@@ -16,7 +16,9 @@ I started this in 2017. In 2022 it won **Startup Chile Ignite** (the fourth gene
 
 ## The platform underneath
 
-Multitenant and fully hosted on AWS, shipped through CI/CD, defined entirely as [infrastructure as code](#/page/iac). Each school is a tenant with its own configuration layered over a central default — the screenshot of the stage configuration above is exactly that: set the defaults centrally, let each school override them.
+Multitenant and fully hosted on AWS, shipped through CI/CD, defined entirely as [infrastructure as code](#/page/iac). It is fast where schools feel it: the evaluations for a whole school of 200 staff are generated in about five minutes, and the school's progress is consolidated in under 20 seconds. The platform runs on ECS Fargate and is ready to scale out when a term's peak demands it. Each school is a tenant with its own configuration layered over a central default — the screenshot of the stage configuration above is exactly that: set the defaults centrally, let each school override them.
+
+Underneath the product is a **modular monolith** — the right tradeoff for a platform one engineer designs, builds and runs. One deployable, with module boundaries and tenant scopes enforced in code so it never slides into a plain monolith; multitenancy as a layer rather than a column, each school's configuration sitting over central defaults. That shape is why the product keeps adapting: a new feature lands as a module or a tenant override, not a rewrite. Innovating with schools took an agile cadence to match — small releases, every push through a pipeline with automatic rollback — which is how it shipped 19 production deployments in 30 days without a failure, each live in about nine minutes.
 
 And because schools keep office hours, the environment does too: outside them, services scale down and the lights go out. The [control panel](#/page/infra-control-panel) is where that happens, with power buttons and schedules anyone on the team can read.
 

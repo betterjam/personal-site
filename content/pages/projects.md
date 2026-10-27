@@ -12,7 +12,7 @@ A single-page ops console that renders the platform's architecture **live from t
 
 ## Commerce Replatform
 
-A production storefront moved to Magento 2 with a Hyvä frontend, with the ERP and payment seams rebuilt around idempotent webhooks and a nightly reconciliation referee. Cutover happened with zero downtime, which mostly means the boring preparation worked. Lesson: [integrations](#/page/integrations) are where replatforms live or die.
+A liquor retailer's legacy storefront replaced with Magento 2 and a Hyvä frontend — Magento chosen because it is almost headless, with the heavy and delicate parts (orders, payments, point-of-sale sync) moved into an event-sourced .NET middleware, and the whole platform standardized as CDK so Magento stopped being hard to deploy. Releases are zero-restart. Lesson: [integrations](#/page/integrations) are where replatforms live or die, and the right tradeoff keeps the delicate parts where you can see them.
 
 ## This Site
 

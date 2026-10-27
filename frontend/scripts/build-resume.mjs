@@ -103,14 +103,13 @@ doc.font('Helvetica').fontSize(11.5).text(resume.role ?? profile.role, { width: 
 doc.moveDown(0.35);
 const linkedIn = (profile.links ?? []).find((l) => l.label === 'LinkedIn')?.url ?? '';
 const gitHub = (profile.links ?? []).find((l) => l.label === 'GitHub')?.url ?? '';
-const contact = [
-  profile.contact,
-  resume.website.replace(/^https?:\/\//, ''),
-  linkedIn.replace(/^https?:\/\//, ''),
-  gitHub.replace(/^https?:\/\//, ''),
-  resume.location,
-].filter(Boolean).join('  |  ');
-doc.fontSize(9.5).text(contact, { width: W, lineGap: 1.5 });
+/* two deliberate lines, who-and-where then the profiles: one long line wraps mid-location */
+const strip = (url) => url.replace(/^https?:\/\/(www\.)?/, '');
+const contactLines = [
+  [profile.contact, strip(resume.website), resume.location],
+  [strip(linkedIn), strip(gitHub)],
+].map((parts) => parts.filter(Boolean).join('  |  '));
+doc.fontSize(9.5).text(contactLines.join('\n'), { width: W, lineGap: 1.5 });
 
 /* ---- summary ---- */
 heading('Summary');
@@ -132,15 +131,34 @@ function roleHeight(job) {
   );
   return 40 + body;
 }
+/** The role's title line, plus its dates line unless this is a continuation at the top of a new page. */
+function roleHeader(job, continued = false) {
+  const title = `${job.title}, ${job.company}${continued ? ' (continued)' : ''}`;
+  doc.font('Helvetica-Bold').fontSize(10.5).text(title, MARGIN, doc.y, { width: W });
+  if (!continued) {
+    const meta = [`${job.start} – ${job.end}`, job.type, job.location].filter(Boolean).join('  |  ');
+    doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(meta, { width: W });
+  }
+  doc.fillColor('#000').moveDown(0.2);
+}
+/** Height one bullet will take, so a role that may split breaks between bullets, never inside one. */
+function bulletHeight(text) {
+  doc.font('Helvetica').fontSize(10);
+  return doc.heightOfString(plain(text), { width: W - 13, lineGap: 1.5 }) + 2;
+}
 function roles(jobs) {
   jobs.forEach((job, i) => {
     if (i > 0) doc.moveDown(0.55);
     ensure(job.keepTogether ? roleHeight(job) : 48);
-    doc.font('Helvetica-Bold').fontSize(10.5).text(`${job.title}, ${job.company}`, MARGIN, doc.y, { width: W });
-    const meta = [`${job.start} – ${job.end}`, job.type, job.location].filter(Boolean).join('  |  ');
-    doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(meta, { width: W });
-    doc.fillColor('#000').moveDown(0.2);
-    for (const b of job.bullets) bullet(b);
+    roleHeader(job);
+    for (const b of job.bullets) {
+      /* a role allowed to split carries its name onto the next page, so no bullet is orphaned */
+      if (!job.keepTogether && doc.y + bulletHeight(b) > BOTTOM()) {
+        doc.addPage();
+        roleHeader(job, true);
+      }
+      bullet(b);
+    }
   });
 }
 

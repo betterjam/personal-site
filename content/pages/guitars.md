@@ -4,7 +4,7 @@ The analog stack: latency zero, uptime whenever I feel like it.
 
 ## Why guitars, on an engineering site
 
-Because they're the same discipline wearing different clothes. A signal chain is a pipeline. A pedalboard is a microservice fleet with better knobs. Tone-chasing is performance tuning where the benchmark is your own ear — subjective, unrepeatable, and completely worth it. Engineering all day teaches you to remove surprises; playing at night reminds you why you liked them.
+Because they're the same discipline wearing different clothes. A signal chain is a pipeline. A pedalboard is a microservice fleet with better knobs. Tone-chasing is performance tuning where the benchmark is your own ear — subjective, unrepeatable, and completely worth it. Engineering teaches you to remove surprises; playing in a free moment reminds you why you liked them.
 
 ## The instruments
 
