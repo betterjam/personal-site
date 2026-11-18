@@ -4,17 +4,17 @@ I take on a small amount of consulting alongside my main work. The honest scope:
 
 ## Where I'm useful
 
-- **Cloud architecture** — multitenant SaaS on AWS, hybrid cloud/on-premise integration, and infrastructure defined as code that a team can read. See [the architecture page](#/page/cloud-architecture).
-
-- **Event-driven architecture** — designing (or untangling) systems built on queues, event stores, and projections. Outboxes, idempotency, replay strategies, schema evolution for events that live forever.
+- **Cloud architecture** — multitenant SaaS on AWS, hybrid cloud/on-premise integration, and infrastructure defined as code that a team can read. I've built all three in production. See [the architecture page](#/page/cloud-architecture).
+- **Event-driven systems** — designing (or untangling) systems built on queues, event stores, and projections. Outboxes, idempotency, sagas, replay strategies, schema evolution for events that live forever. The worked example is [Building Liquor Cart](#/page/building-liquor-cart).
 - **AWS cost sanity** — infrastructure that turns itself off, right-sized instances, and CDK stacks a team can actually read. I've cut real bills by treating environments like appliances with power buttons.
-- **Commerce replatforms** — Magento and the integration seams around it: ERPs, payment gateways, webhook reliability, zero-downtime cutovers.
+- **Commerce replatforms** — Magento and the integration seams around it: registers, ERPs, payment gateways, zero-downtime releases.
+- **AI inside a product** — an assistant that reads through your users' own permissions, keeps personal data out of the prompt, and proposes changes a person approves. I shipped one in [Eleva](#/page/eleva-platform).
 
 ## Background
 
 *Full history on the [experience page](#/page/experience).*
 
-B.Eng. in Computer Systems Engineering from **Universidad Técnica Federico Santa María** in Chile, and the thirteen years since spent building platforms that stay up: a school-evaluation SaaS I've run since 2017 ([Eleva](#/page/eleva-platform), Startup Chile Ignite 2022) and hybrid commerce systems where an on-premise register and a cloud storefront have to agree.
+B.Eng. in Computer Systems Engineering from **Universidad Técnica Federico Santa María** in Chile, and thirteen years of writing software that stays up: [Eleva](#/page/eleva-platform), a school-evaluation SaaS I wrote and have run since 2017 (Startup Chile Ignite 2022), and a hybrid commerce platform where an on-premise register and a cloud storefront have to agree.
 
 ## How I work
 

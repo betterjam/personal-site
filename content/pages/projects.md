@@ -4,7 +4,7 @@ The section above shows the highlights; this page is the longer cut — what eac
 
 ## Eleva Platform
 
-A school management platform built event-first on AWS. The architectural bet was that **schools have office hours**, so the infrastructure should too: outside them, ECS services scale to zero and the database stops. The bill dropped accordingly, and so did the number of things that could break at midnight. Lesson: the cheapest and most reliable instance is the one that's off.
+The SaaS I wrote for schools — 360° staff evaluations, feedback and improvement plans — multitenant on AWS since 2017, Startup Chile Ignite in 2022, and open to other sectors as Eleva Works since 2026. The architectural bet was that **schools have office hours**, so the infrastructure should too: outside them, ECS services scale to zero and the database stops. The bill dropped accordingly, and so did the number of things that could break at midnight. Lesson: the cheapest and most reliable instance is the one that's off.
 
 ## Infra Control Panel
 

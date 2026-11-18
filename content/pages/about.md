@@ -1,10 +1,10 @@
 # About
 
-I'm Diego — a **cloud architect** who still writes the code, building event-driven systems on AWS and chasing vintage guitar tones in my spare time.
+I'm Diego — a **senior software engineer and cloud architect**. I design systems on AWS and I write the code that runs on them. In my spare time I chase vintage guitar tones.
 
-What I get paid to decide is architectural: where state lives, what happens when a boundary fails, what a system costs on a quiet Sunday, and whether someone else can operate it at 3 a.m. [The architecture page](#/page/cloud-architecture) makes that case with receipts.
+The decisions I care about are architectural: where state lives, what happens when a boundary fails, what a system costs on a quiet Sunday, and whether someone else can operate it at 3 a.m. [The architecture page](#/page/cloud-architecture) shows how that looks in real systems.
 
-Most of my work lives where reliability is earned, not assumed: message queues with dead-letter destinations, transactional outboxes, projections you can rebuild from scratch, and infrastructure that exists only as code. I run the Eleva platform — a school management system that powers itself down outside school hours, because the cheapest instance is the one that's off.
+Most of my work lives where reliability is earned, not assumed: message queues with dead-letter destinations, transactional outboxes, projections you can rebuild from scratch, and infrastructure that exists only as code. I wrote and run [Eleva](#/page/eleva-platform) — a SaaS that schools use to evaluate their staff, and that powers itself down outside school hours, because the cheapest instance is the one that's off.
 
 ## What I believe about software
 
@@ -22,7 +22,7 @@ That foundation is why I reach for the primitive rather than the framework when 
 
 ## The short career
 
-Running [Eleva](#/page/eleva-platform) since 2017 (Startup Chile Ignite, 2022), building hybrid commerce platforms where an on-premise register and a cloud storefront have to agree, and doing the occasional small build for people I like. The full version is on the [experience page](#/page/experience).
+Writing and running [Eleva](#/page/eleva-platform) since 2017 (Startup Chile Ignite, 2022), leading the architecture of a hybrid commerce platform where an on-premise register and a cloud storefront have to agree, and doing the occasional small build for people I like. The full version is on the [experience page](#/page/experience).
 
 ## Elsewhere
 

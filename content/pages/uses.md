@@ -4,15 +4,15 @@ The tools I actually reach for, digital and analog.
 
 ## Languages and runtimes
 
-- **TypeScript** everywhere it fits — backends, frontends, infrastructure
-- **Node.js** for services and workers
+- **C# and .NET** — where most of my production code lives: Eleva's backend and Liquor Cart's middleware
+- **TypeScript** everywhere else it fits — Angular, infrastructure, and the Node.js behind this site
 - **PHP** when commerce platforms demand it
 - **SQL** written by hand, read with respect
 
 ## Cloud
 
 - **AWS CDK** — every environment is a TypeScript program
-- **ECS Fargate** for services, **RDS Postgres** for state, **SQS** for everything that can fail
+- **ECS Fargate** for services, **RDS Postgres** for state, a queue for everything that can fail — **RabbitMQ** with MassTransit, or **SQS**
 - **EventBridge Scheduler** — the lights-out switch
 - A homemade ops panel that draws the architecture live from the deployed CloudFormation template
 

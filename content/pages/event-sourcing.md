@@ -6,6 +6,8 @@ State is a cache. Events are the record. Everything else on this page follows fr
 
 An event store trades update-in-place convenience for something better: **history you can trust**. Every change is a named fact with a timestamp — `PostRevised`, `OrderPaid`, `StudentEnrolled` — and current state is just a fold over those facts. When someone asks "how did this row get this way?", the answer is a query, not an archaeology project.
 
+In [Liquor Cart](#/page/commerce-replatform) that question has a price tag. The catalog and the orders live in an event store I built on Marten and PostgreSQL, so "why is this product priced this way?" is a query instead of an argument between two databases, and every payment action is a fact with an author.
+
 ## Projections are disposable
 
 Read models exist to be rebuilt. When requirements change, you don't migrate data — you replay the log into a new shape and drop the old one. This site does exactly that on every boot: posts, pages, even its deploy history are projections replayed from event one. Restart the server, and the truth reassembles itself.
@@ -16,4 +18,4 @@ Events live forever, so they age. Schema evolution — versioning, upcasting, to
 
 ## When not to use it
 
-CRUD that's truly CRUD should stay CRUD. Event sourcing pays when history, audit, or replay have business value — not as a default. The [colophon](#/page/colophon) shows the smallest honest version of the pattern; the [blog](#blog) will carry the war stories.
+CRUD that's truly CRUD should stay CRUD. Event sourcing pays when history, audit, or replay have business value — not as a default. And not everything needs the full pattern to respect history: in [Eleva](#/page/eleva-platform), a process freezes its configuration when it is created, and an answered rubric is versioned, never edited. The [colophon](#/page/colophon) shows the smallest honest version of the pattern.

@@ -1,5 +1,5 @@
 ---
-summary: Where I've worked, the business problems I was hired to solve, and the tradeoffs I made solving them — platforms that stay up, integrations that hold, and infrastructure with a power button.
+summary: Where I've worked and what I built there — platforms that stay up, integrations that hold, and infrastructure with a power button.
 ---
 # Experience
 
@@ -8,28 +8,31 @@ summary: Where I've worked, the business problems I was hired to solve, and the 
 ## Electronic Payments — Lead Software Architect & Full-Stack Engineer
 **Feb 2024 – present · Contract · Remote**
 
-The business problem came first: a liquor retailer sells on the shop floor and online, the registers on the floor are never moving to the cloud, and a register that stops selling because a cloud service hiccuped is a liability, not a system. Leading the transformation of a legacy commerce platform into a cloud-native, event-driven one therefore started with a tradeoff — choose **Magento** as the storefront, because it is almost headless and the business can run its admin alone, and move the heavy, delicate parts (orders, payments, point-of-sale sync) into a middleware designed for exactly that. The result is [Liquor Cart](#/page/commerce-replatform); the decisions behind it are in [Building Liquor Cart](#/page/building-liquor-cart).
+I lead the architecture of [Liquor Cart](#/page/commerce-replatform), the platform that replaced a liquor retailer's legacy commerce system. The retailer sells on the shop floor and online, and the registers on the floor are never moving to the cloud, so the first rule was simple: a register keeps selling when the cloud is down. The storefront is **Magento**; the heavy, delicate parts — orders, payments, point-of-sale sync — live in a .NET middleware I designed and mostly wrote. The story of how it came together is in [Building Liquor Cart](#/page/building-liquor-cart).
 
-- **Built the middleware for resilience.** Domain-driven .NET services exchanging messages over RabbitMQ (MassTransit), one virtual host per store so a store's failure stays in that store, retries with a replayable error queue, a payment saga that reconciles money with orders and escalates to a person when the facts don't resolve, and SymmetricDS clustered on AWS carrying database-level replication across the cloud/on-premise boundary.
-- **Preferred a custom event-sourced layer over plugins to add security and traceability.** With Marten, the event store is the source of truth for catalog and orders: payment actions run under idempotent keys, card data stays tokenized at the gateway, and every change is attributable.
-- **Magento was hard to deploy, so I standardized it as code.** CDK and Projen define identical local, dev, QA and production environments — ECS, Aurora and RDS, Redis, OpenSearch, RabbitMQ — which bought auditability (the diff is the code review), scheduled services, routine patching and dev parity in a single move.
-- **Made the platform operable by the business.** 40+ custom admin modules let it onboard every new store, about 20,000 products included, in around ten minutes, and inspect or re-sync the integration without a developer.
-- **Established observability and security as defaults** for the applications I built: OpenTelemetry traces that cross service boundaries, alarms that mean something, least-privilege IAM and encrypted secrets.
-- **Changed how the company ships.** Its first CI/CD pipelines, with approval before production; the architecture and the pipelines became reference implementations other projects reuse.
-- **Made a six-person team productive on a complex system** through conventions, reviews and mentoring — 178 merged pull requests, 1,600+ unit tests on every push.
+- **Wrote about 90% of the C# middleware.** Domain-driven .NET services exchanging messages over RabbitMQ (MassTransit), one virtual host per store so a store's failure stays in that store, retries with a replayable error queue, and SymmetricDS clustered on AWS carrying database-level replication across the cloud/on-premise boundary.
+- **Built the order and catalog store on event sourcing.** With Marten, the event store is the source of truth: payment actions run under idempotent keys, card data stays tokenized at the gateway, and every change has an author.
+- **Designed payment recovery as a saga.** It reconciles money with orders — completes or cancels, voids or refunds — and hands a person only the cases the facts don't resolve.
+- **Put Magento under infrastructure as code.** CDK and Projen define identical local, dev, QA and production environments — ECS, Aurora and RDS, Redis, OpenSearch, RabbitMQ — so the diff is the code review, services run on a schedule and patching is routine.
+- **Built 40+ Magento admin modules.** A new store, about 20,000 products included, goes live in around ten minutes, and the business inspects or re-syncs the integration without a developer.
+- **Shipped observability and security from the start**: OpenTelemetry traces that cross service boundaries, alarms that mean something, least-privilege IAM and encrypted secrets.
+- **Built the company's first CI/CD pipelines**, with approval before production. The architecture and the pipelines are now the reference other projects copy.
+- **Lead a team of six** on a complex system: conventions, code review and mentoring — 178 merged pull requests, 1,600+ unit tests on every push.
 
 *AWS · CDK · Projen · .NET · Magento 2 · Hyvä · RabbitMQ · Marten · PostgreSQL · Redis · OpenSearch · SymmetricDS · OpenTelemetry*
 
 ## Eleva — Founder & Platform Architect
-**2017 – present · [eleva.school](https://eleva.school)**
+**2017 – present · [eleva.school](https://eleva.school) · [eleva.works](https://eleva.works)**
 
-Built and still run a multitenant SaaS that schools use for 360° performance evaluations and improvement plans: it generates the evaluations for a whole school of 200 staff in about five minutes, consolidates everyone's progress in under 20 seconds, and is ready to scale out on ECS. Started it in 2017; in 2022 it won **Startup Chile Ignite** — the program's fourth generation — which turned a good idea into a funded product.
+I wrote Eleva and I still run it: a multitenant SaaS that schools use for 360° performance evaluations and improvement plans. Started it in 2017; in 2022 it won **Startup Chile Ignite** — the program's fourth generation — which turned a good idea into a funded product. It generates the evaluations for a whole school of 200 staff in about five minutes, consolidates everyone's progress in under 20 seconds, and has been load-tested at 1,000 simultaneous evaluators.
 
-The architectural tradeoff was a **modular monolith** instead of microservices: one deployable a single engineer can run, with explicit module scopes and a multitenant layer where each school's configuration sits over central defaults. New features arrive as a module or a tenant override rather than a rewrite, which is what let the product keep adapting. Innovating with schools demanded an agile delivery strategy — small releases, every push through a pipeline with automatic rollback — so the platform shipped 19 production deployments in 30 days, none failed, each live in about nine minutes.
+It is a **modular monolith**: one deployable, with explicit module scopes and a multitenant layer where each school's configuration sits over central defaults, so new features arrive as a module or a tenant override rather than a rewrite. A process freezes its configuration when it is created, answered rubrics are versioned instead of edited, and climate surveys are anonymous at rest. It ships often — 129 production releases in 30 days, every push through a pipeline with automatic rollback.
 
-I own the whole stack: the domain model, the multitenancy, the AWS architecture as code, the CI/CD, and the operations tooling — including a control panel that renders the platform's architecture live from its deployed CloudFormation and powers environments down outside school hours. Currently folding AI in as an assistant while the functions that decide anything stay deterministic and auditable.
+I own the whole stack: the domain model, the multitenancy, the AWS architecture as code, the CI/CD, and the operations tooling — including a control panel that renders the platform's architecture live from its deployed CloudFormation and powers environments down outside school hours.
 
-*TypeScript · .NET · Angular · AWS (ECS, RDS, CDK) · modular monolith · event sourcing · multitenancy*
+2026 was a big year for it. The platform opened to companies and health organizations as **Eleva Works**, on the same codebase. A self-serve trial now creates a working organization at sign-up. And it got an **AI assistant** for administrators: it reads through the user's own permissions, sees people as pseudonyms and proposes whole evaluation processes, while only a person can apply them and the functions that decide anything stay deterministic and auditable.
+
+*TypeScript · .NET · Angular · AWS (ECS, RDS, CDK) · PostgreSQL · modular monolith · event sourcing · multitenancy*
 
 ## GRUBBRR — Senior Full-Stack Software Engineer
 **Apr 2022 – Aug 2023 · Contract · Boca Raton, FL (remote)**

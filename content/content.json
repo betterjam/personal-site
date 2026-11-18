@@ -1,7 +1,7 @@
 {
   "profile": {
     "name": "Diego Palominos",
-    "role": "Cloud Architect & Software Engineer",
+    "role": "Senior Software Engineer & Cloud Architect",
     "tagline": "I build event-driven systems on AWS and chase vintage guitar tones in my spare time.",
     "credential": "Ingeniería de Ejecución en Sistemas Computacionales — UTFSM, Valparaíso · B.Eng. in Computer Systems Engineering",
     "location": "Working remotely, deploying globally",
@@ -17,11 +17,11 @@
       "label": "Projects",
       "kicker": "Selected work",
       "headline": "Things I shipped and still stand behind",
-      "summary": "A few projects that shaped how I think about software: platforms that turn themselves off at night, control panels that draw their own architecture, and storefronts that survived a replatform.",
+      "summary": "The systems I wrote and still run or stand behind: a SaaS in production since 2017, a commerce platform whose registers keep selling when the cloud is down, and a control panel that draws its own architecture.",
       "items": [
         {
           "page": "eleva-platform",
-          "tags": ["AWS", "ECS", "Event-driven", "CDK"]
+          "tags": [".NET", "Angular", "PostgreSQL", "AWS"]
         },
         {
           "page": "infra-control-panel",
@@ -46,22 +46,22 @@
       "label": "Backend",
       "kicker": "APIs, workers, queues",
       "headline": "Boring on purpose, fast where it counts",
-      "summary": "I like backends that are predictable under load and honest about failure. Explicit contracts, idempotent handlers, and an outbox between the database and the message bus.",
+      "summary": "I like backends that are predictable under load and honest about failure. That is how I wrote the modular monolith behind Eleva and the .NET middleware behind Liquor Cart: explicit contracts, idempotent handlers, and an outbox between the database and the message bus.",
       "items": [
         {
-          "title": "Contract-first APIs",
-          "deck": "Schemas before handlers. Versioned endpoints that consumers can trust, with validation at the edge and errors that tell you what to fix.",
-          "tags": ["REST", "TypeScript", "Node"]
+          "title": "A modular monolith in production",
+          "deck": "Eleva: one .NET deployable on PostgreSQL, with module boundaries and tenant scopes enforced in code. New features land as a module, not a rewrite.",
+          "tags": [".NET", "PostgreSQL", "Multitenancy"]
         },
         {
           "title": "Queues and workers",
-          "deck": "Work that can fail gets a queue, a retry policy, and a dead-letter destination. Every consumer is idempotent because at-least-once delivery always means twice eventually.",
-          "tags": ["SQS", "Idempotency", "Retries"]
+          "deck": "Liquor Cart's middleware, about 90% of its C# mine: services on RabbitMQ with retries, backoff and an error queue an operator can replay. Every consumer is idempotent, because at-least-once always means twice eventually.",
+          "tags": ["RabbitMQ", "MassTransit", "Retries"]
         },
         {
           "title": "The outbox pattern",
-          "deck": "State change and event publication in one transaction. It is the closest thing to a promise a distributed system can make.",
-          "tags": ["Outbox", "Transactions", "Reliability"]
+          "deck": "State change and event publication in one transaction, with an inbox on the other side. The same message twice is a no-op, not a double charge.",
+          "tags": ["Outbox", "Idempotency", "Reliability"]
         }
       ]
     },
@@ -70,12 +70,12 @@
       "label": "Frontend",
       "kicker": "Interfaces people operate",
       "headline": "UIs that explain the system underneath",
-      "summary": "Most of my frontend work is operational: dashboards, control panels, storefronts. The goal is always the same — surface state clearly, make actions obvious, and let motion carry meaning instead of decoration.",
+      "summary": "Most of my frontend work is operational: evaluation screens, control panels, storefronts. The goal is always the same — surface state clearly, make actions obvious, and let motion carry meaning instead of decoration.",
       "items": [
         {
-          "title": "Angular control surfaces",
-          "deck": "Live status boards where a pill, a color, and a timestamp tell you more than a log line. Built to be scanned, not read.",
-          "tags": ["Angular", "RxJS", "Dashboards"]
+          "title": "Angular, in production",
+          "deck": "Eleva's web app, now on Angular 21: evaluations a whole school answers, one question per screen at a desk or as a conversation on a phone. And a control panel built to be scanned, not read.",
+          "tags": ["Angular", "RxJS", "TypeScript"]
         },
         {
           "title": "Hyvä storefronts",
@@ -94,21 +94,21 @@
       "label": "Integrations",
       "kicker": "Where systems shake hands",
       "headline": "Third parties fail; integrations shouldn't",
-      "summary": "ERPs, payment gateways, shipping APIs — every external system is a distributed-systems problem wearing a vendor logo. I build the seams so they bend instead of break.",
+      "summary": "Store registers, payment gateways, ERPs — every external system is a distributed-systems problem wearing a vendor logo. I build the seams so they bend instead of break.",
       "items": [
         {
-          "title": "Webhooks done right",
-          "deck": "Signed, verified, deduplicated, and acknowledged fast. The processing happens later, on a queue, where a retry is cheap.",
-          "tags": ["Webhooks", "Security", "Async"]
+          "title": "Registers that stay on-premise",
+          "deck": "Liquor Cart's registers never moved to the cloud. Database-level replication carries their data across the boundary, over connections that drop, and the register keeps selling either way.",
+          "tags": ["POS", "SymmetricDS", "Hybrid"]
         },
         {
-          "title": "Reconciliation loops",
-          "deck": "When two systems disagree about money, a nightly reconciliation job is the referee. Trust, but verify with a cron.",
-          "tags": ["Payments", "Consistency", "Auditing"]
+          "title": "Payment gateways",
+          "deck": "Card data stays tokenized at the gateway and every payment action runs under an idempotent key. When money and orders disagree, a sweeper notices before the accountant does.",
+          "tags": ["Payments", "Tokenization", "Idempotency"]
         },
         {
           "title": "Anti-corruption layers",
-          "deck": "The vendor's data model stays at the boundary. Inside, the domain speaks its own language and never learns what SOAP is.",
+          "deck": "The vendor's data model stays at the boundary, behind a small frozen vocabulary of wire events. Inside, the domain speaks its own language and never learns what SOAP is.",
           "tags": ["DDD", "Boundaries", "Adapters"]
         }
       ]
@@ -122,12 +122,12 @@
       "items": [
         {
           "title": "Append-only aggregates",
-          "deck": "Every change is an event with a name, a timestamp, and an author. Current state is just a fold over history.",
+          "deck": "Liquor Cart's catalog and orders live in an event store: every change is an event with a name, a timestamp, and an author. Current state is just a fold over history.",
           "tags": ["Events", "Aggregates", "CQRS"]
         },
         {
           "title": "Rebuildable projections",
-          "deck": "Read models are disposable by design. When requirements change, replay the log into a new shape and drop the old one.",
+          "deck": "Read models are disposable by design. This site replays its posts, pages and even its deploys from event one on every boot.",
           "tags": ["Projections", "Replay", "Read models"]
         },
         {
@@ -146,17 +146,17 @@
       "items": [
         {
           "title": "Sagas and compensation",
-          "deck": "Long-running workflows as a chain of local transactions, each with an undo. When step four fails, steps one through three know how to apologize.",
+          "deck": "Liquor Cart's payment recovery is a saga with an undo for every ending: void, refund, cancel or complete. When the facts don't resolve, it escalates to a person.",
           "tags": ["Sagas", "Workflows", "Compensation"]
         },
         {
           "title": "Backpressure",
-          "deck": "Systems should slow down gracefully instead of falling over heroically. Bounded queues, load shedding, and honest 429s.",
+          "deck": "Systems should slow down gracefully instead of falling over heroically. Every store has its own broker virtual host, so one store's retry storm stays in that store.",
           "tags": ["Resilience", "Load", "Flow control"]
         },
         {
           "title": "Observability",
-          "deck": "Traces that cross service boundaries, metrics with alarms that mean something, and logs you can actually search during an incident.",
+          "deck": "OpenTelemetry traces that follow an order from checkout to register, alarms that mean something, and logs you can actually search during an incident.",
           "tags": ["Tracing", "Metrics", "Alerting"]
         }
       ]
@@ -170,17 +170,17 @@
       "items": [
         {
           "title": "CDK everything",
-          "deck": "TypeScript stacks with constructs shaped after the domain, not the console. A new environment is a pull request, not a weekend.",
+          "deck": "TypeScript stacks with constructs shaped after the domain, not the console: Eleva, Liquor Cart's Magento and this site. A new environment is a pull request, not a weekend.",
           "tags": ["CDK", "TypeScript", "AWS"]
         },
         {
           "title": "Cost-aware by design",
-          "deck": "Dev and staging power off outside working hours on schedule rules. The cheapest instance is the one that is off.",
+          "deck": "Eleva powers down outside school hours on schedule rules, and the application was written to tolerate it. The cheapest instance is the one that is off.",
           "tags": ["FinOps", "Scheduling", "Spot"]
         },
         {
           "title": "Pipelines with gates",
-          "deck": "Every stack ships through CodePipeline with manual approval where it matters and automatic rollback where it doesn't.",
+          "deck": "Every stack ships through CodePipeline with manual approval where it matters and automatic rollback where it doesn't. Eleva shipped 129 production releases in 30 days that way.",
           "tags": ["CI/CD", "CodePipeline", "Rollback"]
         }
       ]

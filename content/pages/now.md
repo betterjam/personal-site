@@ -1,12 +1,14 @@
 # Now
 
-*What's on the bench — August 2026.*
+*What's on the bench — November 2026.*
 
 ## Building
 
-**This site.** Built in the open, continuously deployed, and honestly still under construction — the banner on the home page isn't decoration. The stack is a NestJS monolith with an event-sourced content engine on PostgreSQL, a GSAP frontend where every section wears a different guitar finish, and a maintainer console I use to write what you're reading. Diego on lead, Claude on rhythm.
+**Eleva Works.** The platform I wrote for schools now opens to companies and health organizations, on the same codebase. Every feature gets built neutral to the sector, which is harder than it sounds and worth every hour. More on the [Eleva page](#/page/eleva-platform).
 
-**Next up:** shipping the CDK stack — ECS Fargate, an RDS instance, and a pipeline that stamps every deploy with its commit. The site will then appear as a card in my own infra control panel, with a schedule that turns it off at night like everything else I run.
+**Eleva's assistant.** An AI assistant for administrators that reads through their own permissions and proposes whole evaluation processes. It proposes; a person presses the button; the scores stay deterministic.
+
+**This site.** Live at diegopalominos.dev, continuously deployed and turned off at night like everything else I run. The stack is a NestJS monolith with an event-sourced content engine on PostgreSQL, a GSAP frontend where every section wears a different guitar finish, and a maintainer console I use to write what you're reading. Diego on lead, Claude on rhythm.
 
 ## Writing
 

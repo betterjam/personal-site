@@ -5,7 +5,7 @@ gallery: asset:liquor-cart-app/liquor-category-layered-navigation|Category brows
 ---
 # Liquor Cart — Hybrid Commerce
 
-A liquor retailer sells in two places at once: the shop floor and the internet. The registers run on-premise and are never moving to the cloud; the storefront runs on Magento in AWS. **Liquor Cart is the machinery that lets both be true** — built from scratch, storefront to infrastructure.
+A liquor retailer sells in two places at once: the shop floor and the internet. The registers run on-premise and are never moving to the cloud; the storefront runs on Magento in AWS. **Liquor Cart is the machinery that lets both be true** — built from scratch, storefront to infrastructure. I lead its architecture at Electronic Payments, and about 90% of the middleware's C# is mine.
 
 ## Why Magento — and why not all of it
 
